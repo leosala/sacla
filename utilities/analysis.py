@@ -1,4 +1,5 @@
 import numpy as np
+import math
 
 
 def print_leaf(f, leaf_name, level=99, init_level=0):
@@ -44,3 +45,16 @@ def per_pixel_correction(data, thr):
     m = np.ma.masked_where(data > thr, data)
     m.set_fill_value(0)
     return m.mean(axis=0)
+
+
+def get_energy_from_theta(thetaPosition):
+    # Todo: Most probably these variables need to be read out from the control system ...
+    theta_coeff = 25000  # in [pulse/mm]
+    lSinbar = 275.0  # in [mm]
+    theta_offset = -15.0053431  # in [degree]
+    dd = 6.270832
+
+    theta = math.asin((thetaPosition / theta_coeff) / lSinbar + math.sin(theta_offset * math.pi / 180.0)) * 180.0 / math.pi - theta_offset
+    energy = 12.3984 / ((dd) * math.sin(theta * math.pi / 180.0))
+
+    return energy
