@@ -29,10 +29,9 @@ def rebin(a, *args):
     """
     shape = a.shape
     lenShape = len(shape)
-    # factor = np.asarray(shape) / np.asarray(args)
-    evList = ['a.reshape('] + \
-             ['args[%d],factor[%d],' % (i, i) for i in range(lenShape)] + \
-             [')'] + ['.mean(%d)' % (i + 1) for i in range(lenShape)]
+    factor = np.asarray(shape) / np.asarray(args)
+    print factor
+    evList = ['a.reshape('] + ['args[%d],factor[%d],' % (i, i) for i in range(lenShape)] + [')'] + ['.mean(%d)' % (i + 1) for i in range(lenShape)]
     return eval(''.join(evList))
 
 
