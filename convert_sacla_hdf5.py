@@ -10,6 +10,9 @@ from sys import argv, exit
 from time import time
 import pandas as pd
 
+import beamtime_converter_201406XX as btc
+
+
 if len(argv) != 3:
     print "USAGE: ", argv[0], "infile.h5 outfile.h5"
     exit(-1)
@@ -127,24 +130,42 @@ if __name__ == "__main__":
     f = h5py.File(INFILE)
     fout = h5py.File(OUTFILE, "w")
     add_files_dir = "/home/sala/Work/Data/Sacla/DAQ/timbvd/"
-    add_files = ["Delays.txt"]
 
-    convert_func = lambda x : x.replace("pulse", "")
+    convert_sacla_file(f, fout)
 
-    for af in add_files:
-        if af == "Delays.txt":
-            convert_func = lambda x : float(x.replace("pulse", "")) / 149.902
-        df = pd.read_csv(add_files_dir + af, header=0, names=["tag", "value"], index_col="tag", converters={"value": convert_func})
-        print df
+    daq_info = {}
+    daq_info["delay"] = {"fname": "Delays.txt", "units": "ps"}
+    daq_info["energy"] = {"fname": "Mono.txt", "units": "eV"}
+    daq_info["x_shut"] = {"fname": "Xshut.txt", "units": "bool"}
+    daq_info["x_stat"] = {"fname": "Xstat.txt", "units": "bool"}
+    daq_info["laser_on"] = {"fname": "LaserOn.txt", "units": "bool"}
+    daq_info["bl2_I0mon_up"] = {"fname": "X2Up.txt", "units": "V"}
+    daq_info["bl2_I0mon_down"] = {"fname": "X2Up.txt", "units": "V"}
+    daq_info["bl2_I0mon_right"] = {"fname": "X2Right.txt", "units": "V"}
+    daq_info["bl2_I0mon_left"] = {"fname": "X2Left.txt", "units": "V"}
+    daq_info["bl3_apd"] = {"fname": "APD.txt", "units": "V"}
+    daq_info["johann_theta"] = {"fname": "Johann.txt", "units": "pulse"}
 
     run_list = []
-    print f.keys()
     for k in f.keys():
         if k[0:3] == "run":
             run_list.append(k)
-    for r in run_list:
-        tags = f[str(r) + "/event_info/tag_number_list"]
-        red_df = df.loc[tags[0]:tags[-1]]
 
-    #convert_sacla_file(f, fout)
+    for dname, v in daq_info.iteritems():
+        print dname
+        df = pd.read_csv(add_files_dir + v["fname"], header=0, names=["tag", "value"], index_col="tag", )
 
+        for r in run_list:
+            tags = f[str(r) + "/event_info/tag_number_list"]
+            red_df = df.loc[tags[0]:tags[-1]]
+            conv_df = btc.convert(dname, red_df[:])
+            print conv_df[0], conv_df.dtype
+            dt = np.float
+            if v["units"] == "bool" or v["units"] == "pulse":
+                dt = np.int
+            tags_dset = fout.create_dataset(str(r) + "/daq_info/" + dname, data=conv_df, chunks=True, dtype=dt)
+            tags_dset.attrs["units"] = np.string_(v["units"])
+            print tags_dset
+
+    f.close()
+    fout.close()
