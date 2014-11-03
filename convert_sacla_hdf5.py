@@ -10,8 +10,8 @@ from sys import argv, exit
 from time import time
 import pandas as pd
 
+# Converting DAQ quantities
 import beamtime_converter_201406XX as btc
-
 
 if len(argv) != 3:
     print "USAGE: ", argv[0], "infile.h5 outfile.h5"
@@ -22,16 +22,16 @@ start_t = time()
 INFILE = argv[1]
 OUTFILE = argv[2]
 
-SELECT_DETECTORS = ["detector_2d_9"]
+# MPCCD can be detector_2d_1 or 9, depending if Octal was in or not...
+SELECT_DETECTORS = ["MPCCD-1N0-M01-001"]
 
+DET_INFO_DSET = "/detector_info/detector_name"
 RUN_INFO_DST = ["event_info", "exp_info", "run_info"]
 TAG_DST = "tag"
 
-# max items per loop
-MAX_ITEMS = 100
 
-
-def convert_sacla_file(f, fout):
+#@profile
+def convert_sacla_file(f, fout, compress=""):
     """
     Converts SACLA data format in an analysis-friendly format
     """
@@ -50,6 +50,12 @@ def convert_sacla_file(f, fout):
         run_dst = f[run]
         fout.create_group(run)
 
+        # list of all the tags in the file.
+        # Warning! Not all the tags have data...
+        print run_dst["event_info"].keys()
+        tag_list = run_dst["event_info/tag_number_list"]
+        print "#tags:", tag_list.shape
+
         # Copying Run information datasets
         for info_dst in RUN_INFO_DST:
             info = run_dst[info_dst]
@@ -58,67 +64,72 @@ def convert_sacla_file(f, fout):
         # Loop on detectors
         detectors_list = []
         for t in run_dst.keys():
-            if t in SELECT_DETECTORS:
-                if t.find("detector") == -1:
-                    continue
+            if t.find("detector") == -1:
+                continue
+            print t + DET_INFO_DSET, run_dst[t + DET_INFO_DSET].value
+            if run_dst[t + DET_INFO_DSET].value in SELECT_DETECTORS:
+                print "selecting", run_dst[t + DET_INFO_DSET].value, "(known as " + t + ")"
                 detectors_list.append(t)
 
         for det in detectors_list:
             print det
+
             # do not forget about detector info...
             grp = run_dst[det]
-            tags_n = len(grp.items()) - 1  # TODO dirty trick to get rid of detector_info quickly...
+            real_det_name = run_dst[det + DET_INFO_DSET].value
+            tags_images = run_dst[det].keys()
+            tags_images.remove('detector_info')
+            tags_n = tag_list.shape[0]
+            print "Total tags:", tags_n
+
             tags = np.zeros([tags_n], dtype="i8")
             temp = np.zeros([tags_n], dtype="float")
             status = np.zeros([tags_n], dtype="i4")
+            is_data = np.zeros([tags_n], dtype="bool")
+
+            temp[:] = np.NAN
+            status[:] = np.NAN
 
             info = grp["detector_info"]
-            print info, "/" + run + "/" + det
-            fout.create_group(run + "/" + det)
-            f.copy(info, fout["/" + run + "/" + det])
+            print info, "/" + run + "/" + real_det_name
+            fout.create_group(run + "/" + real_det_name)
+            f.copy(info, fout["/" + run + "/" + real_det_name])
 
-            data = None
             data_dset = None
-            first_flag = True
 
-            i = 0
-            data_i = 0
-            for tag_str in run_dst[det].keys():
-                if tag_str == "detector_info":
-                    continue
+            chk_size = 300
+            print det + "/" + tags_images[0] + "/detector_data"
+            print run_dst[det + "/" + tags_images[0]].keys()
+            data_shape = run_dst[det + "/" + tags_images[0] + "/detector_data"].shape
+            data_type = run_dst[det + "/" + tags_images[0] + "/detector_data"].dtype
 
-                if first_flag:
-                    data_shape = run_dst[det + "/" + tag_str + "/detector_data"].shape
-                    data_type = run_dst[det + "/" + tag_str + "/detector_data"].dtype
-                    print data_shape, data_type
-                    chunk_size = (data_shape[0] / 4, data_shape[1] / 4)
+            chunk_size = (data_shape[0] / 4, data_shape[1] / 4)
+            if compress != "":
+                data_dset = fout.create_dataset(run + "/" + real_det_name + "/" + "detector_data", (tags_n, ) + data_shape, maxshape=(None, ) + data_shape, dtype = data_type, chunks=(1, ) + chunk_size, compression = compress, shuffle=True)
+            else:
+                data_dset = fout.create_dataset(run + "/" + real_det_name + "/" + "detector_data", (tags_n, ) + data_shape, maxshape=(None, ) + data_shape, dtype = data_type, chunks=(1, ) + chunk_size, )
 
-                    data_dset = fout.create_dataset(run + "/" + det + "/" + "detector_data", (tags_n, ) + data_shape, maxshape=(None, ) + data_shape, dtype = data_type, chunks=(1, ) + chunk_size)  # compression = "lzf", shuffle=True,
+            for chk_i in xrange(0, tag_list.size, chk_size):
+                # tag_i = tag_list[chk_i]
+                end = chk_i + min(chk_size, tags_n - chk_i)
+                data_chk = np.zeros((min(chk_size, tags_n - chk_i),) + data_shape, dtype=data_type)
+                data_chk[:] = np.NAN
 
-                    data = np.zeros((MAX_ITEMS,) + data_shape, dtype=data_type)
-                    first_flag = False
+                for c in xrange(chk_size):
+                    tag_str = "tag_" + str(tag_list[c + chk_i])  # "tag_" + str(tag_i + c)
+                    if (tag_str) in tags_images:
+                        is_data[chk_i + c] = True
+                        data_chk[c] = run_dst[det + "/" + tag_str + "/detector_data"][:]
+                        tags[chk_i + c] = int(tag_str[4:].strip())
+                        temp[chk_i + c] = run_dst[det + "/" + tag_str + "/temperature"].value
+                        status[chk_i + c] = run_dst[det + "/" + tag_str + "/detector_status"].value
 
-                tags[i] = int(tag_str[4:].strip())
-                temp[i] = run_dst[det + "/" + tag_str + "/temperature"].value
-                temp[i] = run_dst[det + "/" + tag_str + "/detector_status"].value
+                # print chk_i, chk_i + chk_size, end, data_chk[0, 0, 0]
+                data_dset[chk_i:end] = data_chk[:]
 
-                if data_i % MAX_ITEMS == 0 and data_i != 0:
-                    data_dset[i - MAX_ITEMS: i] = data
-                    data = np.zeros((MAX_ITEMS,) + data_shape, dtype=data_type)
-                    data_i = 0
-
-                data[data_i, :, :] = run_dst[det + "/" + tag_str + "/detector_data"][:]
-
-                i += 1
-                data_i += 1
-
-            if data_i <= MAX_ITEMS:
-                print "Writing last ", data_i, "elements"
-                data_dset[i - MAX_ITEMS: i] = data
-
-            tags_dset = fout.create_dataset(run + "/" + det + "/" + TAG_DST, data=tags)
-            temp_dset = fout.create_dataset(run + "/" + det + "/temperature", data=temp)
-            status_dset = fout.create_dataset(run + "/" + det + "/detector_status", data=status)
+            tags_dset = fout.create_dataset(run + "/" + real_det_name + "/" + TAG_DST, data=tags)
+            temp_dset = fout.create_dataset(run + "/" + real_det_name + "/temperature", data=temp)
+            status_dset = fout.create_dataset(run + "/" + real_det_name + "/detector_status", data=status)
 
     #f.close()
     #fout.close()
@@ -132,6 +143,7 @@ if __name__ == "__main__":
     add_files_dir = "/home/sala/Work/Data/Sacla/DAQ/timbvd/"
 
     convert_sacla_file(f, fout)
+    #convert_sacla_file(f, fout, compress="lzf")
 
     daq_info = {}
     daq_info["delay"] = {"fname": "Delays.txt", "units": "ps"}
@@ -165,7 +177,8 @@ if __name__ == "__main__":
                 dt = np.int
             tags_dset = fout.create_dataset(str(r) + "/daq_info/" + dname, data=conv_df, chunks=True, dtype=dt)
             tags_dset.attrs["units"] = np.string_(v["units"])
-            print tags_dset
-
+            # do a write here???
+            fout.flush()
+            
     f.close()
     fout.close()
