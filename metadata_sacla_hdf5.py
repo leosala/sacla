@@ -92,7 +92,8 @@ def syncdaq_get(start_time, end_time, tags, key):
     # Example:
     # command = ['syncdaq_get', '-b', '2014-06-12 01:17:18.910107+09:00', '-e', '2014-06-12 01:17:42.871307+09:00', '-f', '219817020', '-a', '219818218', 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage']
 
-    command = ['syncdaq_get', '-b', start_time, '-e', end_time, '-f', start_tag, '-a', end_tag, key]
+    print 'syncdaq_get', '-b \'', start_time, '\' -e \'', end_time, '\' -f', start_tag, '-a', end_tag, key
+    command = ['syncdaq_get', '-b', str(start_time), '-e', str(end_time), '-f', str(start_tag), '-a', str(end_tag), str(key)]
 
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
     content = proc.stdout.readlines()
@@ -120,6 +121,9 @@ def syncdaq_get(start_time, end_time, tags, key):
     return data
 
 
+import datetime
+import pytz
+
 def get_metadata(runs):
     """
     Get run metadata from the SACLA daq system
@@ -137,10 +141,17 @@ def get_metadata(runs):
             try:
                 # print syncdaq_get('2014-06-12 01:17:18.910107+09:00', '2014-06-12 01:17:42.871307+09:00', '219817020', '219818218', variables[variable])
 
-                meta[variable] = syncdaq_get(run['startTime'], run['endTime'], run['tags'], variables[variable])
+                start_time = datetime.datetime.fromtimestamp(run['startTime'], tz=pytz.timezone('Asia/Tokyo'))
+                end_time = datetime.datetime.fromtimestamp(run['endTime'], tz=pytz.timezone('Asia/Tokyo'))
+
+                # to ensure that we are within the tag region by increasing the end/start timestamp by +/- 2 seconds
+                start_time = start_time + datetime.timedelta(seconds=-2)
+                end_time = end_time + datetime.timedelta(seconds=2)
+
+                meta[variable] = syncdaq_get(start_time, end_time, run['tags'], variables[variable])
             except:
                 print 'Skipping: ', variable
-        metadata[run]=meta
+        metadata[run['number']]=meta
 
     return metadata
 
@@ -163,10 +174,15 @@ def write_metadata(filename, metadata):
 
         for variable, values in run.iteritems():
             data_type = np.float
+            dat=[]
+            # TODO remove this workaround
+            for d in values:
+                dat.append(float(d))
             # if variables[variable]["units"] == "bool" or variables[variable]["units"] == "pulse":
             #     data_type = np.int
 
-            dataset = out_file.create_dataset("run_" + str(run_number) + "/daq_info/" + variable, data=values, chunks=True, dtype=data_type)
+            print "run_" + str(run_number) + "/daq_info/" + variable
+            dataset = out_file.create_dataset("run_" + str(run_number) + "/daq_info/" + variable, data=dat, chunks=True, dtype=data_type)
             # dataset.attrs["units"] = np.string_(variables[variable]["units"])
 
     out_file.close()
