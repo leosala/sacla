@@ -115,7 +115,7 @@ def convert_sacla_file(f, fout, compress=""):
                 data_chk = np.zeros((min(chk_size, tags_n - chk_i),) + data_shape, dtype=data_type)
                 data_chk[:] = np.NAN
 
-                for c in xrange(chk_size):
+                for c in xrange(min(chk_size, tags_n - chk_i)):
                     tag_str = "tag_" + str(tag_list[c + chk_i])  # "tag_" + str(tag_i + c)
                     if (tag_str) in tags_images:
                         is_data[chk_i + c] = True
@@ -130,6 +130,7 @@ def convert_sacla_file(f, fout, compress=""):
             tags_dset = fout.create_dataset(run + "/" + real_det_name + "/" + TAG_DST, data=tags)
             temp_dset = fout.create_dataset(run + "/" + real_det_name + "/temperature", data=temp)
             status_dset = fout.create_dataset(run + "/" + real_det_name + "/detector_status", data=status)
+            isdata_dset = fout.create_dataset(run + "/" + real_det_name + "/is_data", data=is_data)
 
     #f.close()
     #fout.close()
@@ -140,7 +141,8 @@ def convert_sacla_file(f, fout, compress=""):
 if __name__ == "__main__":
     f = h5py.File(INFILE)
     fout = h5py.File(OUTFILE, "w")
-    add_files_dir = "/home/sala/Work/Data/Sacla/DAQ/timbvd/"
+    #add_files_dir = "/home/sala/Work/Data/Sacla/DAQ/timbvd/"
+    add_files_dir = "/media/sala/Elements/Data/Sacla/DAQ/timbvd/"
 
     convert_sacla_file(f, fout)
     #convert_sacla_file(f, fout, compress="lzf")
