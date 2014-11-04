@@ -35,6 +35,7 @@ def convert_sacla_file(f, fout):
     """
     Converts SACLA data format in an analysis-friendly format
     """
+
     file_info = f["file_info"]
     f.copy(file_info, fout)
 
