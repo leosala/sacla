@@ -139,7 +139,7 @@ def convert_sacla_file(f, fout, compress=""):
 
 
 if __name__ == "__main__":
-    f = h5py.File(INFILE)
+    f = h5py.File(INFILE, "r")
     fout = h5py.File(OUTFILE, "w")
     #add_files_dir = "/home/sala/Work/Data/Sacla/DAQ/timbvd/"
     add_files_dir = "/media/sala/Elements/Data/Sacla/DAQ/timbvd/"
