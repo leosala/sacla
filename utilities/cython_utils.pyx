@@ -88,27 +88,53 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarra
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_roi_dst(h5_dst, h5_dst_new, fout, np.ndarray[DTYPE2_t, ndim=1] tags_list, roi=[]):
+def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, roi, np.ndarray[DTYPE_t, ndim=2] pede_matrix=None):
+    """
+    Writes just  an ROI of original dataset in a new dataset. It assumes a standard SACLA HDF5 internal structure, as: /run_X/detector_Y/tag_Z/detector_data. It also saves: a ROI mask (under h5_grp_new/roi_mask)
 
-    cdef int x = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[0]
-    cdef int y = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[1]
+    :param h5_grp: source HDF5 group
+    :param h5_grp_new: dest HDF5 group
+    :param tags_list: list of tags to write
+    :param roi: region of interest
+    :param pede_matrix: pedestal matrix to be subtracted (optional)
+    :return: an integer with the actual number of saved tags
+    """
+
+    cdef int x = h5_grp["tag_" + str(tags_list[0]) + "/detector_data"].shape[0]
+    cdef int y = h5_grp["tag_" + str(tags_list[0]) + "/detector_data"].shape[1]
     cdef int i = 0
     cdef int tot = tags_list.shape[0]
-    cdef np.ndarray[np.uint8_t, cast = True, ndim = 1] total_mask = np.ones(tot, dtype=np.uint8)
-    cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([roi[0][1] - roi[0][0], roi[1][1] - roi[1][0]], dtype=DTYPE)
+    cdef np.ndarray[np.uint8_t, cast = True, ndim = 2] roi_mask = np.zeros([x, y], dtype=np.uint8)
+    cdef int xl = roi[0][0]
+    cdef int xh = roi[0][1]
+    cdef int yl = roi[1][0]
+    cdef int yh = roi[1][1]
+    cdef int counter = 0
+    cdef np.ndarray[DTYPE_t, ndim = 2] data = np.zeros([xh - xl, yh - yl], dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim = 2] img_sum = np.zeros([x, y], dtype=DTYPE)
 
-    spectra = []
+    for i in xrange(xl, xh):
+        for j in xrange(yl, yh):
+            roi_mask[i, j] = 1
 
-    if roi == []:
-        roi = [[0, x], [0, y]]
-
-    for i in tags_list:
-        tag_str = "tag_" + str(i) + "/detector_data"
+    mask_dset = h5_grp_new.create_dataset("roi_mask", data=roi_mask)
+    for tag in tags_list:
+        tag_str = "tag_" + str(tag) + "/detector_data"
         try:
-            data = h5_dst[tag_str][roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
-            grp = fout.create_group(h5_dst.name + "/tag_" + str(i))
-            new_dset = fout.create_dataset(h5_dst.name + "/" + tag_str, data=data)
+            img = h5_grp[tag_str][:]
+            if pede_matrix is not None:
+                img -= pede_matrix
+            img_sum += img
+            data = img[xl:xh, yl:yh]
+            grp = h5_grp_new.create_group(h5_grp.name + "/tag_" + str(tag))
+            new_dset = h5_grp_new.create_dataset(h5_grp.name + "/" + tag_str, data=data)
+            counter += 1
         except:
-            msg = "Tag " + str(i) + ": cannot find detector data"
-            print sys.exc_info()
+            msg = "Tag " + str(tag) + ": cannot find detector data"
+            print msg, sys.exc_info()
 
+    img_sum_dset = h5_grp_new.create_dataset("image_sum", data=img_sum)
+    if pede_matrix is not None:
+        pede_dset = h5_grp_new.create_dataset("pedestal", data=pede_matrix)
+
+    return counter
