@@ -1,2 +1,7 @@
 .idea
 *.pyc
+*.h5
+*~
+notebooks/.ipynb_checkpoints
+*.so
+*.o
