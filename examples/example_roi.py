@@ -1,6 +1,10 @@
 import h5py
-import utilities as ut
 from time import time
+import sys
+import os
+# loading some utils
+sys.path.append(os.environ["PWD"] + "/../")
+import utilities as ut
 
 run = "206162"
 #run = "206178"

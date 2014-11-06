@@ -1,9 +1,14 @@
 import h5py
-import utilities as ut
-from utilities.analysis import rebin
 from time import time
+import sys
+import os
 import matplotlib.pyplot as plt
 import numpy as np
+
+# loading some utils
+sys.path.append(os.environ["PWD"] + "/../")
+import utilities as ut
+from utilities.analysis import rebin
 
 run = "206162"
 #run = "206178"
