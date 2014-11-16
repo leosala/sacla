@@ -2,7 +2,7 @@ import h5py
 import sys
 import os
 # loading some utils
-sys.path.append( os.environ["PWD"]+"/../" )
+sys.path.append(os.environ["PWD"] + "/../")
 from utilities import sacla_hdf5
 
 if __name__ == '__main__':

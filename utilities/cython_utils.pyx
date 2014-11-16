@@ -38,7 +38,31 @@ def per_pixel_correction_cython(np.ndarray[DTYPE_t, ndim=3] data, float thr):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarray[DTYPE_t, ndim=2] corr, roi=[], masks=[]):
+def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int thr):
+
+    cdef int x = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[0]
+    cdef int y = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[1]
+    cdef int i = 0
+    cdef int tot = tags_list.shape[0]
+    cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([x, y], dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim = 2] data = np.zeros([x, y], dtype=DTYPE)
+
+    for t in tags_list:
+        try:
+            data = h5_dst["tag_" + str(t) + "/detector_data"][:]
+            for i in xrange(0, x):
+                for j in xrange(0, y):
+                    if data[i, j] < thr:
+                        corr_data[i, j] += data[i, j] / tot
+        except:
+            print "Tag #%s not found" % t
+
+    return corr_data
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[]):
 
     cdef int x = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[0]
     cdef int y = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[1]
@@ -53,32 +77,35 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarra
         masks_np = masks_tmp
     else:
         masks_np = masks_tmp[np.newaxis, ]
-    
+
     spectra = []
 
     if roi == []:
         roi = [[0, x], [0, y]]
+    if corr is None:
+        corr = np.zeros([x, y], dtype=DTYPE)
 
     for masks_list in masks_np:
-    
         total_mask = np.ones(tot, dtype=DTYPEB)
 
         corr_data = np.zeros([roi[0][1] - roi[0][0], roi[1][1] - roi[1][0]], dtype=DTYPE)
         if masks != []:
             total_mask = masks_list[0].copy()
-            print len(masks), 
             if len(masks) == 1:
                 break
             for m in range(1, len(masks_list)):
                 total_mask *= masks_list[m]
 
         print tags_list[total_mask].shape
+        flag = 0
         for i in tags_list[total_mask]:
             try:
                 corr_data += h5_dst["tag_" + str(i) + "/detector_data"][roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]] - corr[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
+                #print corr_data.shape[0], corr_data.shape[1]
             except:
                 msg = "Tag " + str(i) + ": cannot find detector data"
-        spectra.append(corr_data.sum(axis=1))
+
+        spectra.append([corr_data, corr_data.sum(axis=1)])
 
     if len(spectra) == 1:
         return spectra[0]

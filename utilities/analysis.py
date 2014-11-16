@@ -1,6 +1,7 @@
 import numpy as np
 import math
-from cython_utils import per_pixel_correction_cython
+import cython_utils
+
 
 def print_leaf(f, leaf_name, level=99, init_level=0):
     """
@@ -65,16 +66,20 @@ def per_pixel_correction(data, thr, chk_size=100):
     """
     tot = data.shape[0]
     result = None
-    
+
     for i in xrange(0, tot, chk_size):
         #print i
         data_chk = data[i:i + chk_size]
         if result is None:
-            result = per_pixel_correction_cython(data_chk, thr)
+            result = cython_utils.per_pixel_correction_cython(data_chk, thr)
         else:
-            result += per_pixel_correction_cython(data_chk, thr)
+            result += cython_utils.per_pixel_correction_cython(data_chk, thr)
     print result.shape
     return result / tot
+
+
+def per_pixel_correction_sacla(h5_dst, tags_list, thr):
+    return cython_utils.per_pixel_correction_sacla(h5_dst=h5_dst, tags_list=tags_list, thr=thr)
 
 
 #def per_pixel_correction(data, thr):
@@ -101,6 +106,10 @@ def get_energy_from_theta(thetaPosition):
     energy = 12.3984 / ((dd) * math.sin(theta * math.pi / 180.0))
 
     return energy
+
+
+def get_spectrum_sacla(h5_dst, tags_list, corr=None, apply_corr=False, roi=[], masks=[]):
+    cython_utils.get_spectrum_sacla(h5_dst, tags_list, corr=corr, apply_corr=apply_corr, roi=roi, masks=masks)
 
 
 def get_spectrum(data, f="sum", corr=None, chk_size=200, roi=None, masks=[]):
