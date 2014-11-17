@@ -55,7 +55,7 @@ def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, i
                     if data[i, j] < thr:
                         corr_data[i, j] += data[i, j] / tot
         except:
-            print "Tag #%s not found" % t
+            msg = "Tag #%s not found" % t
 
     return corr_data
 
@@ -69,7 +69,7 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarra
     cdef int i = 0
     cdef int tot = tags_list.shape[0]
     cdef np.ndarray[np.uint8_t, cast = True, ndim = 1] total_mask = np.ones(tot, dtype=np.uint8)
-    cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([roi[0][1] - roi[0][0], roi[1][1] - roi[1][0]], dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([x, y], dtype=DTYPE)
 
     masks_tmp = np.array(masks)
     # is it a list of lists?
@@ -80,8 +80,12 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarra
 
     spectra = []
 
+    print "ROI", roi
     if roi == []:
         roi = [[0, x], [0, y]]
+    else:
+        corr_data = np.zeros([roi[0][1] - roi[0][0], roi[1][1] - roi[1][0]], dtype=DTYPE)
+    print "ROI", roi
     if corr is None:
         corr = np.zeros([x, y], dtype=DTYPE)
 

@@ -11,8 +11,8 @@ import utilities as ut
 # from utilities.analysis import rebin
 
 create_calib = True
-run = "206162"
-#run = "206178"
+#run = "206162"
+run = "206178"
 #run = "206183"
 DIR = "/media/sala/Elements/Data/Sacla/"
 
@@ -38,7 +38,8 @@ is_laser_on = is_laser == 1
 print is_laser_off.shape, is_laser_on.shape
 
 init = time()
-roi = [[0, 1024], [325, 335]]  # X, Y
+#roi = [[0, 1024], [325, 335]]  # X, Y
+roi = []
 [sum_image_on, spectrum_on], [sum_image_off, spectrum_off] = ut.cython_utils.get_spectrum_sacla(f["/run_" + run + "/detector_2d_1/"], tag_list, corr=corr, roi=roi, masks=[[is_laser_on], [is_laser_off]])
 print sum_image_on, spectrum_on
 print "time:", time() - init
