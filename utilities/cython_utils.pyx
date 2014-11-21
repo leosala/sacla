@@ -64,7 +64,6 @@ def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, i
 @cython.wraparound(False)
 def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first_tag, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[]):
 
-    #cdef int first_tag = int(first_tag)  # assuming cleaned tags list
     cdef int x = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[0]
     cdef int y = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[1]
     cdef int i = 0

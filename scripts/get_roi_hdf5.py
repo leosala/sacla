@@ -44,9 +44,9 @@ if __name__ == '__main__':
     }
 
     f = h5py.File(hdf5FileName, 'r')
-    #runs = sacla_hdf5.get_run_metadata(f)
-    #metadata = sacla_hdf5.get_metadata(runs, variables)
-    #sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
+    runs = sacla_hdf5.get_run_metadata(f)
+    metadata = sacla_hdf5.get_metadata(runs, variables)
+    sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
     f_out = h5py.File(hdf5FileName_ROI, 'a')
     run_dst = f["/run_" + run]
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
         print run_dst[d + "/detector_info/detector_name"].value
         if run_dst[d + "/detector_info/detector_name"].value in detector_names:
             detectors_list.append(d)
-    #run_243561/detector_2d_assembled_2/detector_info/detector_name
+
     print detectors_list
     tag_list = f["/run_" + run + "/event_info/tag_number_list"][:]
     DET_INFO_DSET = "/detector_info/detector_name"
@@ -72,7 +72,9 @@ if __name__ == '__main__':
 
     for dreal in detectors_list:
         detector_dsetname = "/run_" + run + "/" + dreal
-        grp = f_out.create_group(detector_dsetname)
+        fout_grp = f_out.create_group(detector_dsetname)
+        info = f[detector_dsetname]["detector_info"]
+        f.copy(info, f_out[detector_dsetname])
 
         sacla_hdf5.get_roi_data(f[detector_dsetname], f_out[detector_dsetname], tag_list, roi)
     f_out.close()
