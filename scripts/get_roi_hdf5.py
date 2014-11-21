@@ -44,12 +44,35 @@ if __name__ == '__main__':
     }
 
     f = h5py.File(hdf5FileName, 'r')
-    runs = sacla_hdf5.get_run_metadata(f)
-    metadata = sacla_hdf5.get_metadata(runs, variables)
-    sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
+    #runs = sacla_hdf5.get_run_metadata(f)
+    #metadata = sacla_hdf5.get_metadata(runs, variables)
+    #sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
     f_out = h5py.File(hdf5FileName_ROI, 'a')
-    grp = f_out.create_group("/run_" + run + "/detector_2d_1")
-    tag_list = f["/run_" + run + "/event_info/tag_number_list"][:]
+    run_dst = f["/run_" + run]
 
-    sacla_hdf5.get_roi_data(f["/run_" + run + "/detector_2d_1/"], f_out["/run_" + run + "/detector_2d_1/"], tag_list, roi)
+    detector_names = ["MPCCD-1N0-M01-001"]
+    detectors_list = []
+    detector_dstnames = [i for i in run_dst.keys() if i.find("detector_2d") != -1]
+    for d in detector_dstnames:
+        print run_dst[d + "/detector_info/detector_name"].value
+        if run_dst[d + "/detector_info/detector_name"].value in detector_names:
+            detectors_list.append(d)
+    #run_243561/detector_2d_assembled_2/detector_info/detector_name
+    print detectors_list
+    tag_list = f["/run_" + run + "/event_info/tag_number_list"][:]
+    DET_INFO_DSET = "/detector_info/detector_name"
+    RUN_INFO_DST = ["event_info", "exp_info", "run_info"]
+    file_info = f["file_info"]
+    f.copy(file_info, f_out)
+    f_out.create_group("/run_" + run)
+
+    for info_dst in RUN_INFO_DST:
+        info = run_dst[info_dst]
+        f.copy(info, f_out["/run_" + run])
+
+    for dreal in detectors_list:
+        detector_dsetname = "/run_" + run + "/" + dreal
+        grp = f_out.create_group(detector_dsetname)
+
+        sacla_hdf5.get_roi_data(f[detector_dsetname], f_out[detector_dsetname], tag_list, roi)
     f_out.close()

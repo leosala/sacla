@@ -40,7 +40,7 @@ def per_pixel_correction_cython(np.ndarray[DTYPE_t, ndim=3] data, float thr):
 @cython.wraparound(False)
 def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int thr):
 
-    cdef int x = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[0]
+    cdef int x 
     cdef int y = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[1]
     cdef int i = 0
     cdef int tot = tags_list.shape[0]
@@ -62,10 +62,11 @@ def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, i
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[]):
+def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first_tag, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[]):
 
-    cdef int x = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[0]
-    cdef int y = h5_dst["tag_" + str(tags_list[0]) + "/detector_data"].shape[1]
+    #cdef int first_tag = int(first_tag)  # assuming cleaned tags list
+    cdef int x = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[0]
+    cdef int y = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[1]
     cdef int i = 0
     cdef int tot = tags_list.shape[0]
     cdef np.ndarray[np.uint8_t, cast = True, ndim = 1] total_mask = np.ones(tot, dtype=np.uint8)
@@ -80,7 +81,6 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarra
 
     spectra = []
 
-    print "ROI", roi
     if roi == []:
         roi = [[0, x], [0, y]]
     else:
@@ -89,6 +89,7 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, np.ndarra
     if corr is None:
         corr = np.zeros([x, y], dtype=DTYPE)
 
+    print corr
     for masks_list in masks_np:
         total_mask = np.ones(tot, dtype=DTYPEB)
 
