@@ -35,7 +35,11 @@ def load(htype):
 if __name__ == "__main__":
     plugins_list = get_plugins_list()
     print plugins_list
+    fname = "/media/sala/Elements/Data/Sacla/206168.h5"
+    plugin_conf = {}
+    plugin_conf['create_spectra'] = {"roi": [[0, 1024], [325, 335]]}
     for p in plugins_list:
-        print p
+        print "Loading %s" % p
         algo = load(p)
-        algo.run()
+        algo.apply(fname)
+        print algo.run()

@@ -27,7 +27,6 @@ class ModulesLoading(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 anbox.analysis_loader.load(p + "s")
 
-
         """
     def test_choice(self):
         #element = random.choice(self.seq)
@@ -44,4 +43,3 @@ class ModulesLoading(unittest.TestCase):
 if __name__ == '__main__':
     suite = unittest.TestLoader().loadTestsFromTestCase(ModulesLoading)
     unittest.TextTestRunner(verbosity=10).run(suite)
-    #unittest.main()
