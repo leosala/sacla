@@ -4,8 +4,25 @@ import numpy as np
 import datetime
 import pytz
 import subprocess
+import sys
 
 import cython_utils
+
+
+def get_last_run():
+    """Gets the last run from sacla webpage"""
+
+    import urllib2
+    # the very important page
+    url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?bl=3"
+
+    # get the html document
+    doc = urllib2.urlopen(url).readlines()
+
+    # a bit dirty, but works...
+    for i, l in enumerate(doc):
+        if l.find("detectors") != -1:
+            return int(doc[i + 4].strip().strip("</td>"))
 
 
 def get_run_metadata(f):
@@ -89,7 +106,12 @@ def syncdaq_get(start_time, end_time, tags, key):
         l = l.replace('pulse', '')
 
         if l:
-            (tag, value) = l.split(',')
+            try:
+                (tag, value) = l.split(',')
+            except:
+                print l
+                raise RuntimeError(l)
+
             # print("%s %s" % (tag.strip(), value.strip()))
             data.append(value.strip())
             data_tags.append(int(tag.strip()))
@@ -125,9 +147,9 @@ def get_metadata(runs, variables):
                 # to ensure that we are within the tag region by increasing the end/start timestamp by +/- 2 seconds
                 start_time = start_time + datetime.timedelta(seconds=-2)
                 end_time = end_time + datetime.timedelta(seconds=2)
-
                 meta[variable] = syncdaq_get(start_time, end_time, run['tags'], variables[variable])
             except:
+                print sys.exc_info()
                 print 'Skipping: ', variable
         metadata[run['number']] = meta
 
