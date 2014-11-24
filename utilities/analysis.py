@@ -3,7 +3,7 @@ import math
 import cython_utils
 
 
-def print_leaf(f, leaf_name, level=99, init_level=0):
+def print_leaf(f, leaf_name, level=99, init_level=0, ):
     """
     Print iteratively leafs of an HDF5 file
     """

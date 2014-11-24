@@ -75,11 +75,12 @@ if __name__ == '__main__':
 
     for dreal in detectors_list:
         detector_dsetname = "/run_" + run + "/" + dreal
-        
+
         try:
             fout_grp = f_out.create_group(detector_dsetname)
         except:
             print sys.exc_info()[1]
+
         info = f[detector_dsetname]["detector_info"]
         f.copy(info, f_out[detector_dsetname])
 
