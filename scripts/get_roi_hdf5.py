@@ -22,7 +22,7 @@ detector_names = ["MPCCD-1N0-M01-001"]
 # "MPCCD-1-1-002", "MPCCD-1-1-004"]
 
 
-def get_roi_hdf5(indir, outdir, run, roi, detector_names):
+def get_roi_hdf5(indir, outdir, run, roi, detector_names, pede_thr=-1):
 
     hdf5FileName = indir + '/' + run + '.h5'
     hdf5FileName_ROI = outdir + '/' + run + '_roi.h5'
@@ -61,11 +61,9 @@ def get_roi_hdf5(indir, outdir, run, roi, detector_names):
     detectors_list = []
     detector_dstnames = [i for i in run_dst.keys() if i.find("detector_2d") != -1]
     for d in detector_dstnames:
-        print run_dst[d + "/detector_info/detector_name"].value
         if run_dst[d + "/detector_info/detector_name"].value in detector_names:
             detectors_list.append(d)
 
-    print detectors_list
     tag_list = f["/run_" + run + "/event_info/tag_number_list"][:]
     DET_INFO_DSET = "/detector_info/detector_name"
     RUN_INFO_DST = ["event_info", "exp_info", "run_info"]
@@ -90,8 +88,7 @@ def get_roi_hdf5(indir, outdir, run, roi, detector_names):
         info = f[detector_dsetname]["detector_info"]
         f.copy(info, f_out[detector_dsetname])
 
-        print detector_dsetname
-        sacla_hdf5.get_roi_data(f[detector_dsetname], f_out[detector_dsetname], tag_list, roi)
+        sacla_hdf5.get_roi_data(f[detector_dsetname], f_out[detector_dsetname], tag_list, roi, pede_thr=pede_thr)
     f_out.close()
     print "Run %s done!" % str(run)
 
@@ -100,7 +97,7 @@ class PClose(pyinotify.ProcessEvent):
     def _run_cmd(self, run):
         """Command ran when a new file is closed"""
         try:
-            get_roi_hdf5(self.indir, self.outdir, run, roi, detector_names)
+            get_roi_hdf5(self.indir, self.outdir, run, roi, detector_names, pede_thr=self.pede_thr)
         except:
             print "ERROR: cannot get roi for %s" % run
             print sys.exc_info()[0]
@@ -116,12 +113,13 @@ class PClose(pyinotify.ProcessEvent):
             self._run_cmd(run)
 
 
-def auto_reduce(indir, outdir):
+def auto_reduce(indir, outdir, pede_thr=-1):
     print "Starting monitoring.... please wait"
     wm = pyinotify.WatchManager()
     handler = PClose()
     handler.indir = indir
     handler.outdir = outdir
+    handler.pede_thr = pede_thr
 
     notifier = pyinotify.Notifier(wm, default_proc_fun=handler)
     mask = pyinotify.IN_CLOSE_WRITE  # | pyinotify.IN_CREATE
@@ -138,10 +136,11 @@ if __name__ == '__main__':
     parser.add_argument('run', metavar='run', type=int, nargs="*", help='Run number to reduce, assuming the file is called <runnumber>.h5. If no run number is given, then the script will start watching the input directory')
     parser.add_argument("-i", "--indir", help="""Directory where input files are stored. Default: .""", action="store", default=".")
     parser.add_argument("-o", "--outdir", help="""Directory where output files are stored. Default: .""", action="store", default=".")
+    parser.add_argument("-t", "--pedestal_thr", help="""Threshold to be used when computing pedestal. Default: not computed""", action="store", default=-1)
     args = parser.parse_args()
 
     if args.run != []:
         run = str(args.run[0])
-        get_roi_hdf5(args.indir, args.outdir, run, roi, detector_names)
+        get_roi_hdf5(args.indir, args.outdir, run, roi, detector_names, pede_thr=float(args.pedestal_thr))
     else:
-        auto_reduce(args.indir, args.outdir)
+        auto_reduce(args.indir, args.outdir, pede_thr=args.pedestal_thr)

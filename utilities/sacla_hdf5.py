@@ -68,7 +68,6 @@ def get_run_metadata(f):
         else:
             print('Skipping entry: ' + k)
 
-    print runs
     return runs
 
 
@@ -89,7 +88,7 @@ def syncdaq_get(start_time, end_time, tags, key):
     # Example:
     # command = ['syncdaq_get', '-b', '2014-06-12 01:17:18.910107+09:00', '-e', '2014-06-12 01:17:42.871307+09:00', '-f', '219817020', '-a', '219818218', 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage']
 
-    print 'syncdaq_get', '-b \'', start_time, '\' -e \'', end_time, '\' -f', start_tag, '-a', end_tag, key
+    # print 'syncdaq_get', '-b \'', start_time, '\' -e \'', end_time, '\' -f', start_tag, '-a', end_tag, key
     command = ['syncdaq_get', '-b', str(start_time), '-e', str(end_time), '-f', str(start_tag), '-a', str(end_tag), str(key)]
 
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
@@ -109,7 +108,6 @@ def syncdaq_get(start_time, end_time, tags, key):
             try:
                 (tag, value) = l.split(',')
             except:
-                print l
                 raise RuntimeError(l)
 
             # print("%s %s" % (tag.strip(), value.strip()))
@@ -185,7 +183,7 @@ def write_metadata(filename, metadata):
     out_file.close()
 
 
-def get_roi_data(h5_dst, h5_dst_new, tags_list, roi, pede_matrix=None):
+def get_roi_data(h5_dst, h5_dst_new, tags_list, roi, pede_matrix=None, pede_thr=-1):
     """
     Writes just  an ROI of original dataset in a new dataset. It assumes a standard SACLA HDF5 internal structure, as: /run_X/detector_Y/tag_Z/detector_data. It also saves: a ROI mask (under h5_grp_new/roi_mask)
 
@@ -199,13 +197,11 @@ def get_roi_data(h5_dst, h5_dst_new, tags_list, roi, pede_matrix=None):
 
     first_tag = 0
     for t in h5_dst.keys():
-        print t[0:4]
         if t[0:4] == "tag_":
             first_tag = int(t[4:])
-            print first_tag
             break
 
-    cython_utils.get_roi_data(h5_dst, h5_dst_new, tags_list, first_tag, roi, pede_matrix=None)
+    cython_utils.get_roi_data(h5_dst, h5_dst_new, tags_list, first_tag, roi, pede_matrix=None, pede_thr=pede_thr)
 
 
 if __name__ == '__main__':
