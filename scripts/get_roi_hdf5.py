@@ -4,17 +4,25 @@ import os
 # loading some utils
 sys.path.append(os.environ["PWD"] + "/../")
 from utilities import sacla_hdf5
+
 import line_profiler
+from time import sleep
 
 import pyinotify
 
-detector_names = ["MPCCD-1-1-002", "MPCCD-1-1-004"]  # ["MPCCD-1N0-M01-001"]
+import logging
+logging.basicConfig(filename='tape_migration.log',
+                    format="%(process)d:%(levelname)s:%(asctime)s:%(message)s",
+                    level=logging.DEBUG)
+
+# Configurables
 roi = [[0, 1024], [325, 335]]  # X, Y
+# June run
+detector_names = ["MPCCD-1N0-M01-001"]
+# "MPCCD-1-1-002", "MPCCD-1-1-004"]
 
 
-#@profile
 def get_roi_hdf5(indir, outdir, run, roi, detector_names):
-
 
     hdf5FileName = indir + '/' + run + '.h5'
     hdf5FileName_ROI = outdir + '/' + run + '_roi.h5'
@@ -45,7 +53,7 @@ def get_roi_hdf5(indir, outdir, run, roi, detector_names):
     runs = sacla_hdf5.get_run_metadata(f)
     metadata = sacla_hdf5.get_metadata(runs, variables)
     sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
-    f_out = h5py.File(hdf5FileName_ROI, 'a', )  # driver='mpio', comm=MPI.COMM_WORLD)  # driver='stdio')
+    f_out = h5py.File(hdf5FileName_ROI, 'a', )
 
     # f = h5py.File('parallel_test.hdf5', 'w', driver='mpio', comm=MPI.COMM_WORLD)
     run_dst = f["/run_" + run]
@@ -74,7 +82,7 @@ def get_roi_hdf5(indir, outdir, run, roi, detector_names):
 
     for dreal in detectors_list:
         detector_dsetname = "/run_" + run + "/" + dreal
-        
+
         try:
             fout_grp = f_out.create_group(detector_dsetname)
         except:
@@ -82,20 +90,58 @@ def get_roi_hdf5(indir, outdir, run, roi, detector_names):
         info = f[detector_dsetname]["detector_info"]
         f.copy(info, f_out[detector_dsetname])
 
+        print detector_dsetname
         sacla_hdf5.get_roi_data(f[detector_dsetname], f_out[detector_dsetname], tag_list, roi)
     f_out.close()
-    print "done!"
+    print "Run %s done!" % str(run)
+
+
+class PClose(pyinotify.ProcessEvent):
+    def _run_cmd(self, run):
+        """Command ran when a new file is closed"""
+        try:
+            get_roi_hdf5(self.indir, self.outdir, run, roi, detector_names)
+        except:
+            print "ERROR: cannot get roi for %s" % run
+            print sys.exc_info()[0]
+
+    def process_IN_CLOSE_WRITE(self, event):
+        f = event.name and os.path.join(event.path, event.name) or event.path
+        if event.name.find("roi.h5") != -1:
+            print "skipping %s" % event.name
+        else:
+            run = str(event.name.split(".")[0])
+            print "%s closed, waiting 5 secs to be sure..." % event.name
+            sleep(5)
+            self._run_cmd(run)
+
+
+def auto_reduce(indir, outdir):
+    print "Starting monitoring.... please wait"
+    wm = pyinotify.WatchManager()
+    handler = PClose()
+    handler.indir = indir
+    handler.outdir = outdir
+
+    notifier = pyinotify.Notifier(wm, default_proc_fun=handler)
+    mask = pyinotify.IN_CLOSE_WRITE  # | pyinotify.IN_CREATE
+
+    wm.add_watch(indir, mask, rec=True, auto_add=True)
+    print '==> Start completed, monitoring %s (type C^c to exit)' % indir
+    notifier.loop()
+    print "loop stopped, exiting"
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('run', metavar='run', type=int, nargs=1, help='an integer for the accumulator')
+    parser.add_argument('run', metavar='run', type=int, nargs="*", help='Run number to reduce, assuming the file is called <runnumber>.h5. If no run number is given, then the script will start watching the input directory')
     parser.add_argument("-i", "--indir", help="""Directory where input files are stored. Default: .""", action="store", default=".")
     parser.add_argument("-o", "--outdir", help="""Directory where output files are stored. Default: .""", action="store", default=".")
     args = parser.parse_args()
-    print args
 
-    run = str(args.run[0])
-
-    get_roi_hdf5(args.indir, args.outdir, run, roi, detector_name)
+    if args.run != []:
+        run = str(args.run[0])
+        get_roi_hdf5(args.indir, args.outdir, run, roi, detector_names)
+    else:
+        auto_reduce(args.indir, args.outdir)
