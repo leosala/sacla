@@ -119,7 +119,7 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first_tag, roi, np.ndarray[DTYPE_t, ndim=2] pede_matrix=None, DTYPE_t pede_thr=-1):
+def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first_tag, roi, np.ndarray[DTYPE_t, ndim=2] dark_matrix=None, DTYPE_t pede_thr=-1):
     """
     Writes just  an ROI of original dataset in a new dataset. It assumes a standard SACLA HDF5 internal structure, as: /run_X/detector_Y/tag_Z/detector_data. It also saves: a ROI mask (under h5_grp_new/roi_mask)
 
@@ -127,7 +127,8 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
     :param h5_grp_new: dest HDF5 group
     :param tags_list: list of tags to write
     :param roi: region of interest
-    :param pede_matrix: pedestal matrix to be subtracted (optional)
+    :param dark_matrix: dark correction matrix to be subtracted (optional)
+    :param pede_thr: threshold for pedestal computation (optional). If dark_matrix, then the pedestal is computed after the subtraction
     :return: an integer with the actual number of saved tags
     """
 
@@ -155,8 +156,8 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
         tag_str = "tag_" + str(tag) + "/detector_data"
         try:
             img = h5_grp[tag_str][:]
-            if pede_matrix is not None:
-                img -= pede_matrix
+            if dark_matrix is not None:
+                img -= dark_matrix
             img_sum += img
             data = img[xl:xh, yl:yh]
             grp = h5_grp_new.create_group(h5_grp.name + "/tag_" + str(tag))
@@ -170,18 +171,18 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
                             corr_data[i, j] += img[i, j]
         except:
             msg = "Tag " + str(tag) + ": cannot find detector data"
-            # print msg, sys.exc_info()
+
         if (100. * float(counter) / float(tot)) % 25 == 0:
             print "%d percent completed" % int(100. * float(counter) / float(tot))
     img_sum_dset = h5_grp_new.create_dataset("image_sum", data=img_sum)
-    print "a", pede_thr, corr_data
-    if pede_matrix is not None:
-        pede_dset = h5_grp_new.create_dataset("pedestal", data=pede_matrix)
+
+    if dark_matrix is not None:
+        dark_dset = h5_grp_new.create_dataset("pedestal", data=dark_matrix)
     if pede_thr != -1:
         for i in xrange(0, x):
             for j in xrange(0, y):
                 corr_data[i, j] /= counter
-        pede_dset2 = h5_grp_new.create_dataset("pedestal_thr" + str(pede_thr), data=corr_data)
-        print "pedestal_thr" + str(pede_thr)
+        pede_dset = h5_grp_new.create_dataset("pedestal_thr" + str(pede_thr), data=corr_data)
+        print "pedestal_thr" + str(pede_thr) + " created"
 
     return counter
