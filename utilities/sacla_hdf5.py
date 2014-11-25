@@ -196,7 +196,16 @@ def get_roi_data(h5_dst, h5_dst_new, tags_list, roi, pede_matrix=None):
     :param pede_matrix: pedestal matrix to be subtracted (optional)
     :return: an integer with the actual number of saved tags
     """
-    cython_utils.get_roi_data(h5_dst, h5_dst_new, tags_list, roi, pede_matrix=None)
+
+    first_tag = 0
+    for t in h5_dst.keys():
+        print t[0:4]
+        if t[0:4] == "tag_":
+            first_tag = int(t[4:])
+            print first_tag
+            break
+
+    cython_utils.get_roi_data(h5_dst, h5_dst_new, tags_list, first_tag, roi, pede_matrix=None)
 
 
 if __name__ == '__main__':

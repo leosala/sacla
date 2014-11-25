@@ -3,7 +3,7 @@ import math
 import cython_utils
 
 
-def print_leaf(f, leaf_name, level=99, init_level=0, ):
+def print_leaf(f, leaf_name, level=99, init_level=0):
     """
     Print iteratively leafs of an HDF5 file
     """
@@ -79,7 +79,15 @@ def per_pixel_correction(data, thr, chk_size=100):
 
 
 def per_pixel_correction_sacla(h5_dst, tags_list, thr):
-    return cython_utils.per_pixel_correction_sacla(h5_dst=h5_dst, tags_list=tags_list, thr=thr)
+    first_tag = 0
+    for t in h5_dst.keys():
+        print t[0:4]
+        if t[0:4] == "tag_":
+            first_tag = int(t[4:])
+            print first_tag
+            break
+
+    return cython_utils.per_pixel_correction_sacla(h5_dst=h5_dst, tags_list=tags_list, thr=thr, first_tag=first_tag)
 
 
 #def per_pixel_correction(data, thr):
@@ -116,7 +124,7 @@ def get_spectrum_sacla(h5_dst, tags_list, corr=None, roi=[], masks=[]):
             first_tag = int(t[4:])
             print first_tag
             break
-        
+
     return cython_utils.get_spectrum_sacla(h5_dst, tags_list, first_tag, corr=corr, roi=roi, masks=masks)
 
 
