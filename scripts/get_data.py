@@ -80,7 +80,7 @@ def download_run(current_run):
         shutil.move(tmp_data_file, data_file)
 
 
-def download_run_to_latest(start_run):
+def download_run_to_latest(start_run, keepPolling):
     if not os.path.exists(tmp_data_directory):
         print 'Create temporary directory %s' % tmp_data_directory
         os.makedirs(tmp_data_directory)
@@ -94,6 +94,14 @@ def download_run_to_latest(start_run):
         print 'checking for new runs'
         last_run = get_last_run()
 
+        if current_run > last_run and keepPolling:
+            while current_run > last_run:
+                print 'no new runs - sleep ...'
+                time.sleep(5)
+                last_run = get_last_run()
+
+
+
 
 
 if __name__ == "__main__":
@@ -104,16 +112,18 @@ if __name__ == "__main__":
 
     parser.add_argument("run", help="run number")
     parser.add_argument("-l", "--latest", help="download up to latest run number", action="store_true")
+    parser.add_argument("-d", "--daemon", help="download up to latest run number and keep polling (only applies if -l is specified)", action="store_true")
 
     arguments = parser.parse_args()
 
     print arguments.latest
     print arguments.run
+    print arguments.daemon
 
     print 'Start run number is "', arguments.run
 
 
     if arguments.latest:
-        download_run_to_latest(int(arguments.run))
+        download_run_to_latest(int(arguments.run), arguments.daemon)
     else:
         download_run(int(arguments.run))
