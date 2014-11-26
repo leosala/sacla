@@ -2,6 +2,7 @@ import urllib2
 
 
 url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?bl=3"
+url = "file:///Users/ebner/Git/sacla/test/test.html"
 
 
 if __name__ == "__main__":
