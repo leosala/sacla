@@ -12,10 +12,10 @@ from time import sleep
 
 import pyinotify
 
-import logging
-logging.basicConfig(filename='tape_migration.log',
-                    format="%(process)d:%(levelname)s:%(asctime)s:%(message)s",
-                    level=logging.DEBUG)
+# import logging
+# logging.basicConfig(filename='tape_migration.log',
+#                     format="%(process)d:%(levelname)s:%(asctime)s:%(message)s",
+#                     level=logging.DEBUG)
 
 
 # Configurables
