@@ -1,5 +1,10 @@
 # Useful scripts for data analysis at SACLA
 
+## `get_data`
+
+Retrieve data for the given run (until the latest) ...
+
+
 ## `get_last_runs`
 
 It gets the last run from 
