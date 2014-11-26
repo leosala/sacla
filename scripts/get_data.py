@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     print arguments.latest
     print arguments.run
-    print argument.daemon
+    print arguments.daemon
 
     print 'Start run number is "', arguments.run
 
