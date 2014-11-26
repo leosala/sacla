@@ -4,12 +4,14 @@ import numpy as np
 cimport numpy as np
 cimport cython
 from cpython cimport bool
-
+from libc.math cimport sqrt
 
 DTYPE = np.float32
 ctypedef np.float32_t DTYPE_t
-DTYPE2 = np.long
-ctypedef np.long_t DTYPE2_t
+DTYPE3 = np.double
+ctypedef np.double_t DTYPE3_t
+DTYPE2 = np.int32
+ctypedef np.int32_t DTYPE2_t
 DTYPEB = bool
 ctypedef bool DTYPEB_t
 
@@ -63,7 +65,7 @@ def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, i
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first_tag, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[]):
+def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, DTYPE2_t first_tag, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[]):
 
     cdef int x = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[0]
     cdef int y = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[1]
@@ -89,7 +91,6 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first
     if corr is None:
         corr = np.zeros([x, y], dtype=DTYPE)
 
-    print corr
     for masks_list in masks_np:
         total_mask = np.ones(tot, dtype=DTYPEB)
 
@@ -120,7 +121,7 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first_tag, roi, np.ndarray[DTYPE_t, ndim=2] dark_matrix=None, DTYPE_t pede_thr=-1):
+def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int first_tag, roi, np.ndarray[DTYPE3_t, ndim=2] dark_matrix=None, DTYPE_t pede_thr=-1):
     """
     Writes just  an ROI of original dataset in a new dataset. It assumes a standard SACLA HDF5 internal structure, as: /run_X/detector_Y/tag_Z/detector_data. It also saves: a ROI mask (under h5_grp_new/roi_mask)
 
@@ -145,6 +146,8 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
     cdef int counter = 0
     cdef np.ndarray[DTYPE_t, ndim = 2] data = np.zeros([xh - xl, yh - yl], dtype=DTYPE)
     cdef np.ndarray[DTYPE_t, ndim = 2] img_sum = np.zeros([x, y], dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim = 2] img_sum2 = np.zeros([x, y], dtype=DTYPE)
+
     cdef np.ndarray[DTYPE_t, ndim = 2] img = np.zeros([x, y], dtype=DTYPE)
     cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([x, y], dtype=DTYPE)
 
@@ -152,19 +155,20 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
         for j in xrange(yl, yh):
             roi_mask[i, j] = 1
 
+    if dark_matrix is not None:
+        print "computing with dark corr"
     mask_dset = h5_grp_new.create_dataset("roi_mask", data=roi_mask)
     init_time = time()
     for tag in tags_list:
         tag_str = "tag_" + str(tag) + "/detector_data"
         try:
             img = h5_grp[tag_str][:]
-            #for i in xrange(xl, xh):
-            #    for j in xrange(yl, yh):
-            #        data[i - xl, j - yl] = img[i, j]
-            
+
             if dark_matrix is not None:
                 img -= dark_matrix
             img_sum += img
+            img_sum2 += img * img
+
             data = img[xl:xh, yl:yh]
             grp = h5_grp_new.create_group(h5_grp.name + "/tag_" + str(tag))
             new_dset = h5_grp_new.create_dataset(h5_grp.name + "/" + tag_str, data=data)
@@ -184,16 +188,21 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
             if counter != 0:
                 print "%d percent completed" % int(100. * float(counter) / float(tot))
     print "tag loop took ", time() - init_time
-                
+    print img_sum[0:10]
     img_sum_dset = h5_grp_new.create_dataset("image_sum", data=img_sum)
-    
+    img_avg_dset = h5_grp_new.create_dataset("image_avg", data=img_sum / counter)
+    img_std_dset = h5_grp_new.create_dataset("image_std", data=np.sqrt((img_sum2 / counter) - (img_sum / counter) * (img_sum / counter)))
+
     if dark_matrix is not None:
-        dark_dset = h5_grp_new.create_dataset("pedestal", data=dark_matrix)
-    #if pede_thr != -1:
-    #    for i in xrange(0, x):
-    #        for j in xrange(0, y):
-    #            corr_data[i, j] /= counter
-    #    pede_dset = h5_grp_new.create_dataset("pedestal_thr" + str(pede_thr), data=corr_data)
-    #    print "pedestal_thr" + str(pede_thr) + " created"
+        dark_dset = h5_grp_new.create_dataset("dark_correction", data=dark_matrix)
+    #dset = h5_grp_new.create_dataset("dark_fname", (100,), dtype="S16")
+        
+
+    if pede_thr != -1:
+        for i in xrange(0, x):
+            for j in xrange(0, y):
+                corr_data[i, j] /= counter
+        pede_dset = h5_grp_new.create_dataset("pedestal_thr" + str(pede_thr), data=corr_data)
+        print "pedestal_thr" + str(pede_thr) + " created"
 
     return counter

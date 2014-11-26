@@ -7,7 +7,6 @@ import subprocess
 import sys
 
 import cython_utils
-import line_profiler
 
 def get_last_run():
     """Gets the last run from sacla webpage"""
@@ -239,7 +238,7 @@ def write_metadata(filename, metadata):
     out_file.close()
 
 
-def get_roi_data(h5_dst, h5_dst_new, tags_list, roi, pede_matrix=None, pede_thr=-1):
+def get_roi_data(h5_dst, h5_dst_new, tags_list, roi, dark_matrix=None, pede_thr=-1):
     """
     Writes just  an ROI of original dataset in a new dataset. It assumes a standard SACLA HDF5 internal structure, as: /run_X/detector_Y/tag_Z/detector_data. It also saves: a ROI mask (under h5_grp_new/roi_mask)
 
@@ -257,7 +256,7 @@ def get_roi_data(h5_dst, h5_dst_new, tags_list, roi, pede_matrix=None, pede_thr=
             first_tag = int(t[4:])
             break
 
-    cython_utils.get_roi_data(h5_dst, h5_dst_new, tags_list, first_tag, roi, dark_matrix=pede_matrix, pede_thr=pede_thr)
+    cython_utils.get_roi_data(h5_dst, h5_dst_new, tags_list, first_tag, roi, dark_matrix=dark_matrix, pede_thr=pede_thr)
 
 
 if __name__ == '__main__':
