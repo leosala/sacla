@@ -1,9 +1,10 @@
 import sys
+from time import time
 import numpy as np
 cimport numpy as np
 cimport cython
-
 from cpython cimport bool
+
 
 DTYPE = np.float32
 ctypedef np.float32_t DTYPE_t
@@ -152,10 +153,15 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
             roi_mask[i, j] = 1
 
     mask_dset = h5_grp_new.create_dataset("roi_mask", data=roi_mask)
+    init_time = time()
     for tag in tags_list:
         tag_str = "tag_" + str(tag) + "/detector_data"
         try:
             img = h5_grp[tag_str][:]
+            #for i in xrange(xl, xh):
+            #    for j in xrange(yl, yh):
+            #        data[i - xl, j - yl] = img[i, j]
+            
             if dark_matrix is not None:
                 img -= dark_matrix
             img_sum += img
@@ -169,20 +175,25 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
                     for j in xrange(0, y):
                         if img[i, j] < pede_thr:
                             corr_data[i, j] += img[i, j]
-        except:
+        except KeyError:
             msg = "Tag " + str(tag) + ": cannot find detector data"
+        except:
+            print sys.exc_info()[0]
 
         if (100. * float(counter) / float(tot)) % 25 == 0:
-            print "%d percent completed" % int(100. * float(counter) / float(tot))
+            if counter != 0:
+                print "%d percent completed" % int(100. * float(counter) / float(tot))
+    print "tag loop took ", time() - init_time
+                
     img_sum_dset = h5_grp_new.create_dataset("image_sum", data=img_sum)
-
+    
     if dark_matrix is not None:
         dark_dset = h5_grp_new.create_dataset("pedestal", data=dark_matrix)
-    if pede_thr != -1:
-        for i in xrange(0, x):
-            for j in xrange(0, y):
-                corr_data[i, j] /= counter
-        pede_dset = h5_grp_new.create_dataset("pedestal_thr" + str(pede_thr), data=corr_data)
-        print "pedestal_thr" + str(pede_thr) + " created"
+    #if pede_thr != -1:
+    #    for i in xrange(0, x):
+    #        for j in xrange(0, y):
+    #            corr_data[i, j] /= counter
+    #    pede_dset = h5_grp_new.create_dataset("pedestal_thr" + str(pede_thr), data=corr_data)
+    #    print "pedestal_thr" + str(pede_thr) + " created"
 
     return counter

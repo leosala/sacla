@@ -5,7 +5,6 @@ import os
 sys.path.append(os.environ["PWD"] + "/../")
 from utilities import sacla_hdf5
 
-import line_profiler
 from time import sleep
 
 import pyinotify
@@ -15,11 +14,11 @@ logging.basicConfig(filename='tape_migration.log',
                     format="%(process)d:%(levelname)s:%(asctime)s:%(message)s",
                     level=logging.DEBUG)
 
+
 # Configurables
 roi = [[0, 1024], [325, 340]]  # X, Y
 # June run
-detector_names = ["MPCCD-1N0-M01-001"]
-# "MPCCD-1-1-002", "MPCCD-1-1-004"]
+detector_names = ["MPCCD-1N0-M01-001", "MPCCD-1-1-002", "MPCCD-1-1-004"]
 
 
 def get_roi_hdf5(indir, outdir, run, roi, detector_names, pede_thr=-1):
@@ -42,7 +41,7 @@ def get_roi_hdf5(indir, outdir, run, roi, detector_names, pede_thr=-1):
         'LasI': 'xfel_bl_3_st_3_pd_4_peak/voltage',  # Extra info laser I
         'Xshut': 'xfel_bl_3_shutter_1_open_valid/status',  # X-ray on
         'Xstat': 'xfel_mon_bpm_bl3_0_3_beamstatus/summary',  # X-ray status
-        #'X3':  'xfel_bl_3_st_2_bm_1_pd_peak/voltage',  # X-ray i 3
+        'X3':  'xfel_bl_3_st_2_bm_1_pd_peak/voltage',  # X-ray i 3
         'X41': 'xfel_bl_3_st_3_pd_3_fitting_peak/voltage',  # X-ray i 4
         'X42': 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage',  # X-ray i 4
         'Johann': 'xfel_bl_3_st_3_motor_42/position',  # Johann theta
@@ -53,8 +52,10 @@ def get_roi_hdf5(indir, outdir, run, roi, detector_names, pede_thr=-1):
     runs = sacla_hdf5.get_run_metadata(f)
     metadata = sacla_hdf5.get_metadata(runs, variables)
     sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
-    f_out = h5py.File(hdf5FileName_ROI, 'a', )
-
+    if roi != []:
+        f_out = h5py.File(hdf5FileName_ROI, 'a', driver="core")
+    else:
+        f_out = h5py.File(hdf5FileName_ROI, 'a', )
     # f = h5py.File('parallel_test.hdf5', 'w', driver='mpio', comm=MPI.COMM_WORLD)
     run_dst = f["/run_" + run]
 

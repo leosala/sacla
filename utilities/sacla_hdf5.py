@@ -7,22 +7,6 @@ import subprocess
 import sys
 
 import cython_utils
-import line_profiler
-
-def get_last_run():
-    """Gets the last run from sacla webpage"""
-
-    import urllib2
-    # the very important page
-    url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?bl=3"
-
-    # get the html document
-    doc = urllib2.urlopen(url).readlines()
-
-    # a bit dirty, but works...
-    for i, l in enumerate(doc):
-        if l.find("detectors") != -1:
-            return int(doc[i + 4].strip().strip("</td>"))
 
 
 def get_run_metadata(f):
