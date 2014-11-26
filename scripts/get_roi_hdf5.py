@@ -16,7 +16,7 @@ logging.basicConfig(filename='tape_migration.log',
                     level=logging.DEBUG)
 
 # Configurables
-roi = [[0, 1024], [325, 335]]  # X, Y
+roi = [[0, 1024], [325, 340]]  # X, Y
 # June run
 detector_names = ["MPCCD-1N0-M01-001"]
 # "MPCCD-1-1-002", "MPCCD-1-1-004"]
@@ -32,21 +32,21 @@ def get_roi_hdf5(indir, outdir, run, roi, detector_names, pede_thr=-1):
         'PD': 'xfel_bl_3_st_3_pd_2_fitting_peak/voltage',
         'PD9': 'xfel_bl_3_st_3_pd_9_fitting_peak/voltage',
         'I0': 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage',
-        'M27': 'xfel_bl_3_st3_motor_27/position',
-        'M28': 'xfel_bl_3_st3_motor_28/position',
+        'M27': 'xfel_bl_3_st_3_motor_27/position',
+        'M28': 'xfel_bl_3_st_3_motor_28/position',
         'LaserOn': 'xfel_bl_lh1_shutter_1_open_valid/status',
         'LaserOff': 'xfel_bl_lh1_shutter_1_close_valid/status',
-        'Delays': 'xfel_bl_3_st3_motor_25/position',
+        'Delays': 'xfel_bl_3_st_3_motor_25/position',
         'Mono': 'xfel_bl_3_tc_mono_1_theta/position',
         'APD': 'xfel_bl_3_st_3_pd_14_fitting_peak/voltage',
-        'LasI': 'xfel_bl3_st_3_pd_4_peak/voltage',  # Extra info laser I
+        'LasI': 'xfel_bl_3_st_3_pd_4_peak/voltage',  # Extra info laser I
         'Xshut': 'xfel_bl_3_shutter_1_open_valid/status',  # X-ray on
         'Xstat': 'xfel_mon_bpm_bl3_0_3_beamstatus/summary',  # X-ray status
-        'X3': 'xfel_bl_3_st2_bm_1_pd_peak/voltage',  # X-ray i 3
+        #'X3':  'xfel_bl_3_st_2_bm_1_pd_peak/voltage',  # X-ray i 3
         'X41': 'xfel_bl_3_st_3_pd_3_fitting_peak/voltage',  # X-ray i 4
         'X42': 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage',  # X-ray i 4
-        'Johann': 'xfel_bl_3_st3_motor_42/position',  # Johann theta
-        'APD_trans': 'xfel_bl_3_st3_motor_17/position'  # Johann det
+        'Johann': 'xfel_bl_3_st_3_motor_42/position',  # Johann theta
+        'APD_trans': 'xfel_bl_3_st_3_motor_17/position'  # Johann det
     }
 
     f = h5py.File(hdf5FileName, 'r')
