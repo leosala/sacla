@@ -21,6 +21,7 @@ run_url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?bl=3"
 import os
 import shutil
 import time
+import sys
 
 def get_last_run():
     """Gets the last run from sacla webpage"""
@@ -77,6 +78,7 @@ def download_run(current_run):
 
         # Move file to data folder
         print('Move datafile')
+        time.sleep(10)  # added by Leo, suspicious crash...
         shutil.move(tmp_data_file, data_file)
 
 
@@ -89,8 +91,14 @@ def download_run_to_latest(start_run, keepPolling):
     current_run = start_run
     while current_run <= last_run:
         while current_run <= last_run:
-            download_run(current_run)
-            current_run += 1
+            try:
+                download_run(current_run)
+                current_run += 1
+            except KeyboardInterrupt:
+                raise KeyboardInterrupt
+            except:
+                print "Failed to get %s because..." % str(current_run)
+                print sys.exc_info()
         print 'checking for new runs'
         last_run = get_last_run()
 
