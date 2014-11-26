@@ -19,27 +19,6 @@ logging.basicConfig(filename='tape_migration.log',
                     level=logging.DEBUG)
 from random import randint
 
-x_data = "Mono"
-y_data = "I0"
-data_mask = "LaserOn"
-
-daq_quantities = {
-    'I0': 'xfel_bl_3_tc_spec_1/energy',
-    #'LaserOn': 'xfel_bl_lh1_shutter_1_open_valid/status',
-    'Mono': 'xfel_bl_3_tc_mono_1_theta/position',
-    'PD': 'xfel_bl_3_st_4_pd_user_1_fitting_peak/voltage',
-    'APD': 'xfel_bl_3_st_3_pd_14_fitting_peak/voltage',
-
-}
-
-#start_time = time() - 2 #- 700000
-#stop_time = start_time + 2 # 600
-
-#s = "2014-06-04 12:13"  # "04/06/2014 11:59"
-#e = "2014-06-05 12:15"  # "04/06/2014 12:00"
-
-s = "2014-06-04 11:59"  # "04/06/2014 11:59"
-e = "2014-06-04 12:00"  # "04/06/2014 12:00"
 
 
 class UpdateDAQ(object):
@@ -91,7 +70,6 @@ class UpdateDAQ(object):
             if self.data_list[p_i] is not None:
                 for k in daq_quantities.keys():
                     self.data_list[p_i][k][1].extend(data_on_tmp[k][1])
-                    print k, randint(0, 10)
             else:
                 self.data_list[p_i] = data_on_tmp.copy()
 
@@ -172,7 +150,7 @@ class UpdateDAQ(object):
                 xmax = dfs[i].idxmax()[self.plots[i]['y']]
                 ymin = dfs[i].min()[self.plots[i]['y']]
                 ymax = dfs[i].max()[self.plots[i]['y']]
-                
+
             if xmin > dfs[i].idxmin()[self.plots[i]['y']]:
                 xmin = dfs[i].idxmin()[self.plots[i]['y']]
             if xmax < dfs[i].idxmax()[self.plots[i]['y']]:
@@ -184,26 +162,24 @@ class UpdateDAQ(object):
                 ymax = dfs[i].max()[self.plots[i]['y']]
             self.ax2.set_ylim(float(ymin), float(ymax))
 
-                        #self.ax2.set_ylim(0.5 * float(min(ys)), 1.5 * float(max(ys)))
+            #self.ax2.set_ylim(0.5 * float(min(ys)), 1.5 * float(max(ys)))
  
             self.line2[i].set_data(xs[i], ys[i])
 
-        return self.line, self.line2[0]  # , self.line2[1]
+        return self.line, self.line2[0], self.line2[1]
 
 
 if __name__ == '__main__':
-    #import argparse
-    #parser = argparse.ArgumentParser()
-    #parser.add_argument('run', metavar='run', type=int, nargs="*", help='Run number to reduce, assuming the file is called <runnumber>.h5. If no run number is given, then the script will start watching the input directory')
-    #parser.add_argument("-s", "--start_time", help="""Directory where input files are stored. Default: .""", action="store", default=".")
-    #parser.add_argument("-e", "--stop_time", help="""Directory where output files are stored. Default: .""", action="store", default=".")
-    #args = parser.parse_args()
+    daq_quantities = {
+        'I0': 'xfel_bl_3_tc_spec_1/energy',
+        'LaserOn': 'xfel_bl_lh1_shutter_1_open_valid/status',
+        'Mono': 'xfel_bl_3_tc_mono_1_theta/position',
+        'PD': 'xfel_bl_3_st_4_pd_user_1_fitting_peak/voltage',
+        'APD': 'xfel_bl_3_st_3_pd_14_fitting_peak/voltage',
+    }
 
-    #if args.run != []:
-    #    run = str(args.run[0])
-    #    get_roi_hdf5(args.indir, args.outdir, run, roi, detector_names, pede_thr=float(args.pedestal_thr))
-    #else:
-    #    auto_reduce(args.indir, args.outdir, pede_thr=args.pedestal_thr)
+    s = "2014-06-04 11:59"  # "04/06/2014 11:59"
+    e = "2014-06-04 12:00"  # "04/06/2014 12:00"
 
     start_time = time() - 3600 #mktime(datetime.datetime.strptime(s, "%Y-%m-%d %H:%M").timetuple())
     stop_time =  time() #mktime(datetime.datetime.strptime(e, "%Y-%m-%d %H:%M").timetuple())
@@ -211,21 +187,13 @@ if __name__ == '__main__':
     fig = plt.figure()
     ax = fig.add_subplot(1, 2, 1)
     ax2 = fig.add_subplot(1, 2, 2)
-    
-#    ud = UpdateDAQ([ax, ax2], start_time=start_time, stop_time=stop_time, daq_quantities=daq_quantities,
-#                   plots=[{'x': 'I0', 'y': 'Mono', },  #'cond': "xfel_bl_lh1_shutter_1_close_valid/status = 1"},
-#                          {'x': 'I0', 'y': 'Mono', }],  #'cond': "xfel_bl_lh1_shutter_1_close_valid/status = 0"}],
-#                   operation="subtract",
-#                   json_name="daq.json", csv_name="daq.csv",
-#                   )
+
     ud = UpdateDAQ([ax, ax2], start_time=start_time, stop_time=stop_time, daq_quantities=daq_quantities,
-                   plots=[{'x': 'I0', 'y': 'PD', 'cond': 'xfel_bl_3_shutter_1_open_valid/status = 0'}, {'x': 'I0', 'y': 'PD', 'cond': 'xfel_bl_3_shutter_1_open_valid/status = 1'},],  #'cond': "xfel_bl_lh1_shutter_1_close_valid/status = 1"},
+                   plots=[{'x': 'I0', 'y': 'PD', 'cond': 'xfel_bl_3_shutter_1_open_valid/status = 0'},
+                          {'x': 'I0', 'y': 'PD', 'cond': 'xfel_bl_3_shutter_1_open_valid/status = 1'},],
                    json_name="daq.json", csv_name="daq.csv",
                    operation="subtract"
                    )
 
     anim = FuncAnimation(fig, ud, interval=1000, blit=True)
     plt.show()
-    #'cond': ""
-    #'cond': "xfel_bl_3_shutter_1_open_valid/status = 0"
-
