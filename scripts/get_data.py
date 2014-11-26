@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # This script retrieves all data for runs from a start run number up to the latest one
 # If a the data file of a run exist the download will skip this file
