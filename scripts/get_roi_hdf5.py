@@ -103,7 +103,6 @@ def get_roi_hdf5(indir, outdir, run, rois, detector_names, pede_thr=-1, dark_fil
 
         if dark_file != "":
             print "With dark correction"
-            print f_dark[dark_dset_names[i]].shape, f_dark[dark_dset_names[i]][:]
             sacla_hdf5.get_roi_data(f[detector_dsetname], f_out[detector_dsetname], tag_list, rois[i], pede_thr=pede_thr, dark_matrix=f_dark[dark_dset_names[i]][:])
             f_out[detector_dsetname].attrs['dark_filename'] = np.string_(dark_file.split("/")[-1])
             print np.string_(dark_file.split("/")[-1])

@@ -188,7 +188,7 @@ def get_roi_data(h5_grp, h5_grp_new, np.ndarray[DTYPE2_t, ndim=1] tags_list, int
             if counter != 0:
                 print "%d percent completed" % int(100. * float(counter) / float(tot))
     print "tag loop took ", time() - init_time
-    print img_sum[0:10]
+
     img_sum_dset = h5_grp_new.create_dataset("image_sum", data=img_sum)
     img_avg_dset = h5_grp_new.create_dataset("image_avg", data=img_sum / counter)
     img_std_dset = h5_grp_new.create_dataset("image_std", data=np.sqrt((img_sum2 / counter) - (img_sum / counter) * (img_sum / counter)))
