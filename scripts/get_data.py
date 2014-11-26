@@ -94,14 +94,11 @@ def download_run_to_latest(start_run, keepPolling):
         print 'checking for new runs'
         last_run = get_last_run()
 
-        if current_run == last_run:
-            if keepPolling:
-                while current_run == last_run:
-                    print 'no new runs - sleep ...'
-                    time.sleep(5)
-                    last_run = get_last_run()
-            else:
-                break
+        if current_run > last_run and keepPolling:
+            while current_run > last_run:
+                print 'no new runs - sleep ...'
+                time.sleep(5)
+                last_run = get_last_run()
 
 
 
@@ -121,6 +118,7 @@ if __name__ == "__main__":
 
     print arguments.latest
     print arguments.run
+    print argument.daemon
 
     print 'Start run number is "', arguments.run
 
