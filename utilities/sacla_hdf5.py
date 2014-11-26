@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 import cython_utils
-
+import line_profiler
 
 def get_last_run():
     """Gets the last run from sacla webpage"""
@@ -70,8 +70,8 @@ def get_run_metadata(f):
 
     return runs
 
-
-def syncdaq_get(start_time, end_time, tags, key):
+#@profile
+def syncdaq_get(start_time, end_time, key, tags=None, cond=None):
     """
     Read (additional) information via syncdaq_get command
 
@@ -82,16 +82,27 @@ def syncdaq_get(start_time, end_time, tags, key):
     :return:       values of the key for the given start/end time and start/end tag
     """
 
-    start_tag = tags[0]
-    end_tag = tags[-1]
+    if tags is not None:
+        start_tag = tags[0]
+        end_tag = tags[-1]
 
-    # Example:
-    # command = ['syncdaq_get', '-b', '2014-06-12 01:17:18.910107+09:00', '-e', '2014-06-12 01:17:42.871307+09:00', '-f', '219817020', '-a', '219818218', 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage']
+        # Example:
+        # command = ['syncdaq_get', '-b', '2014-06-12 01:17:18.910107+09:00', '-e', '2014-06-12 01:17:42.871307+09:00', '-f', '219817020', '-a', '219818218', 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage']
 
-    # print 'syncdaq_get', '-b \'', start_time, '\' -e \'', end_time, '\' -f', start_tag, '-a', end_tag, key
-    command = ['syncdaq_get', '-b', str(start_time), '-e', str(end_time), '-f', str(start_tag), '-a', str(end_tag), str(key)]
+        # print 'syncdaq_get', '-b \'', start_time, '\' -e \'', end_time, '\' -f', start_tag, '-a', end_tag, key
+        command = ['syncdaq_get', '-b', str(start_time), '-e', str(end_time), '-f', str(start_tag), '-a', str(end_tag), str(key)]
+    else:
+        command = ['syncdaq_get', '-b', str(start_time), '-e', str(end_time), str(key)]
 
+    if cond is not None:
+        command.append("-c")
+        command.append(cond)
+        command.append("-l")
+        command.append("-1")
+
+    print command
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
+
     content = proc.stdout.readlines()
     data = []
     data_tags = []
@@ -105,21 +116,28 @@ def syncdaq_get(start_time, end_time, tags, key):
         l = l.replace('pulse', '')
 
         if l:
-            try:
-                (tag, value) = l.split(',')
-            except:
-                print command
-                raise RuntimeError(l)
+            if l.find("total") == -1:
+                try:
+                    (tag, value) = l.split(',')
+                    data.append(value.strip())
+                    data_tags.append(int(tag.strip()))
 
-            # print("%s %s" % (tag.strip(), value.strip()))
-            data.append(value.strip())
-            data_tags.append(int(tag.strip()))
+                except:
+                    print command
+                    print l
+                    #raise RuntimeError(l)
+
+                # print("%s %s" % (tag.strip(), value.strip()))
 
     # Check consistency of tag list
-    if set(tags) != set(data_tags):
-        raise RuntimeError('Tag list for key ' + key + ' does not match')
+    if tags is not None:
+        if set(tags) != set(data_tags):
+            raise RuntimeError('Tag list for key ' + key + ' does not match')
 
-    return data
+        return data
+    else:
+        # if not tags in input, I need the returned tags list
+        return tags, data
 
 
 def get_metadata(runs, variables):
@@ -146,13 +164,47 @@ def get_metadata(runs, variables):
                 # to ensure that we are within the tag region by increasing the end/start timestamp by +/- 2 seconds
                 start_time = start_time + datetime.timedelta(seconds=-2)
                 end_time = end_time + datetime.timedelta(seconds=2)
-                meta[variable] = syncdaq_get(start_time, end_time, run['tags'], variables[variable])
+                meta[variable] = syncdaq_get(start_time, end_time, variables[variable], tags=run['tags'])
             except:
                 print sys.exc_info()
                 print 'Skipping: ', variable
         metadata[run['number']] = meta
 
     return metadata
+
+#@profile
+def get_daq_data(variables, run=None, start_time=None, stop_time=None, start_tag=None, stop_tag=None, cond=None):
+    """
+    Get generic daq metadata from the SACLA daq system
+
+    :param variables: Dict of DAQ variables to get, in the form: {'friendly_name': 'daq_name'}
+    :param run: run selection (optional)
+    :return: Returns all metadata that is specified in variables list. The return structure looks like this: {'delay':[], 'mono:[]}
+    """
+
+    meta = {}
+    for variable in variables:
+        # Call syncdaq_get command (ideally we can retrieve data for all variables at once ...)
+        print start_time, stop_time
+        #try:
+            # print syncdaq_get('2014-06-12 01:17:18.910107+09:00', '2014-06-12 01:17:42.871307+09:00', '219817020', '219818218', variables[variable])
+
+        init_time = datetime.datetime.fromtimestamp(start_time, )  # tz=pytz.timezone('Asia/Tokyo'))
+        end_time = datetime.datetime.fromtimestamp(stop_time, )  # tz=pytz.timezone('Asia/Tokyo'))
+        #print start_time, end_time
+
+        # to ensure that we are within the tag region by increasing the end/start timestamp by +/- 2 seconds
+        init_time += datetime.timedelta(seconds=-2)
+        end_time += datetime.timedelta(seconds=2)
+        if start_tag is None:
+            meta[variable] = syncdaq_get(init_time, end_time, variables[variable], cond=cond)
+        else:
+            meta[variable] = syncdaq_get(init_time, end_time, variables[variable], tags=[start_tag, stop_tag])
+        #except:
+        #    print sys.exc_info()
+        #    print 'Skipping: ', variable
+
+    return meta
 
 
 def write_metadata(filename, metadata):
@@ -173,10 +225,10 @@ def write_metadata(filename, metadata):
             dat = []
             # if cannot convert to float, cast to NaN
             for d in values:
-                try:
-                    dat.append(float(d))
-                except ValueError:
-                    dat.append(np.nan)
+                #try:
+                dat.append(float(d))
+                #except ValueError:
+                #    dat.append(np.nan)
             # if variables[variable]["units"] == "bool" or variables[variable]["units"] == "pulse":
             #     data_type = np.int
 
