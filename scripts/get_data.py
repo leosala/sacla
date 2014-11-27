@@ -50,10 +50,14 @@ def get_last_run():
 #     return run
 # # FOR TESTING ONLY
 
-def download_run(current_run):
+def download_run(current_run, nompccd):
     print current_run
     tmp_data_file = '%s/%06d.h5' % (tmp_data_directory, current_run)
     data_file = '%s/%06d.h5' % (data_directory, current_run)
+    if nompccd:
+        tmp_data_file = '%s/%06d_nompccd.h5' % (tmp_data_directory, current_run)
+        data_file = '%s/%06d_nompccd.h5' % (data_directory, current_run)
+
     # Check whether run was already downloaded
     if os.path.isfile(data_file):
         print('Datafile for run %s already exists' % current_run)
@@ -68,6 +72,9 @@ def download_run(current_run):
         # Make taglist
         #MakeTagList -b 3 -r 243561 -inp FEL_openshutter.txt -out tag_number_run243561.txt
         taglist_file = '%s/%06d_taglist.txt' % (taglist_directory, current_run)
+        if nompccd:
+            taglist_file = '%s/%06d_taglist_nompccd.txt' % (taglist_directory, current_run)
+
         command = 'MakeTagList -b %d -r %06d -inp %s -out %s' % (beamline, current_run, maketaglist_condition_file, taglist_file)
         print command
         os.system(command)
@@ -78,6 +85,9 @@ def download_run(current_run):
         # Call DataConvert4
         # DataConvert4 -f test1017.conf -l tag_number1017.list -dir ./ -o test1017.h5
         command = 'DataConvert4 -f %s -l %s -dir %s -o %06d.h5' % (dataconvert_config_file, taglist_file, tmp_data_directory, current_run)
+        if nompccd:
+            command = 'DataConvert4 -f %s -l %s -dir %s -o %06d_nompccd.h5' % (dataconvert_config_file, taglist_file, tmp_data_directory, current_run)
+
         print command
         os.system(command)
 
@@ -89,7 +99,7 @@ def download_run(current_run):
         shutil.move(tmp_data_file, data_file)
 
 
-def download_run_to_latest(start_run, keepPolling):
+def download_run_to_latest(start_run, keepPolling, nompccd):
     if not os.path.exists(tmp_data_directory):
         print 'Create temporary directory %s' % tmp_data_directory
         os.makedirs(tmp_data_directory)
@@ -100,7 +110,7 @@ def download_run_to_latest(start_run, keepPolling):
         if last_run is not None:
             while current_run <= last_run:
                 try:
-                    download_run(current_run)
+                    download_run(current_run, nompccd)
                     current_run += 1
                 except KeyboardInterrupt:
                     raise KeyboardInterrupt
@@ -117,7 +127,7 @@ def download_run_to_latest(start_run, keepPolling):
                 last_run = get_last_run()
 
 
-def fix_taglist(txt_file):
+def fix_taglist(txt_file, nompccd):
     import re
     #txt_file='/Users/ebner/Desktop/256664_taglist.txt'
     with open(txt_file, 'r') as file:
@@ -126,8 +136,10 @@ def fix_taglist(txt_file):
 
     with open(txt_file, 'w') as file:
         for line in data:
-            if re.match('^det,$', line):
+            if re.match('^det,$', line) and not nompccd:
                 print 'fix it ...'
+            elif re.match('^det,.*', line) and nompccd:
+                print 'remove detectors ...'
             else:
                 file.write(line)
 
@@ -141,17 +153,19 @@ if __name__ == "__main__":
     parser.add_argument("run", help="run number")
     parser.add_argument("-l", "--latest", help="download up to latest run number", action="store_true")
     parser.add_argument("-d", "--daemon", help="download up to latest run number and keep polling (only applies if -l is specified)", action="store_true")
+    parser.add_argument("-n", "--nompccd", help="Do not include MPCCD detectors", action="store_true")
 
     arguments = parser.parse_args()
 
     print arguments.latest
     print arguments.run
     print arguments.daemon
+    print arguments.nompccd
 
     print 'Start run number is "', arguments.run
 
 
     if arguments.latest:
-        download_run_to_latest(int(arguments.run), arguments.daemon)
+        download_run_to_latest(int(arguments.run), arguments.daemon, arguments.nompccd)
     else:
-        download_run(int(arguments.run))
+        download_run(int(arguments.run, arguments.nompccd))
