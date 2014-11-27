@@ -7,10 +7,13 @@
 # Use: qsub -I to get an interactive shell on a node
 
 
-data_directory='/work/timbvd/hdf5'
+#data_directory= "/work/leonardo"  
+data_directory = '/work/timbvd/hdf5'
 #data_directory='/Users/ebner/Desktop/data'
 tmp_data_directory='%s/tmp' % data_directory
 taglist_directory='%s/taglists' % data_directory
+
+
 
 maketaglist_condition_file='%s/config/maketaglist.conf' % data_directory
 dataconvert_config_file='%s/config/dataconvert.conf' % data_directory
@@ -22,6 +25,9 @@ import os
 import shutil
 import time
 import sys
+import multiprocessing as mproc
+
+VERBOSE = False
 
 def get_last_run():
     """Gets the last run from sacla webpage"""
@@ -49,6 +55,7 @@ def get_last_run():
 #         fortest=fortest+2
 #     return run
 # # FOR TESTING ONLY
+
 
 def download_run(current_run, nompccd):
     print current_run
@@ -93,6 +100,9 @@ def download_run(current_run, nompccd):
         if nompccd:
             command = 'DataConvert4 -f %s -l %s -dir %s -o %06d_nompccd.h5' % (dataconvert_config_file, taglist_file, tmp_data_directory, current_run)
 
+        if not VERBOSE:
+            command += " &> /dev/null"
+
         print command
         os.system(command)
 
@@ -100,11 +110,13 @@ def download_run(current_run, nompccd):
 
         # Move file to data folder
         print('Move datafile')
-        time.sleep(10)  # added by Leo, suspicious crash...
+        time.sleep(5)  # added by Leo, suspicious crash...
         shutil.move(tmp_data_file, data_file)
 
+        return
 
-def download_run_to_latest(start_run, keepPolling, nompccd):
+
+def download_run_to_latest(start_run, keepPolling, nompccd, max_jobs=1):
     if not os.path.exists(tmp_data_directory):
         print 'Create temporary directory %s' % tmp_data_directory
         os.makedirs(tmp_data_directory)
@@ -114,16 +126,20 @@ def download_run_to_latest(start_run, keepPolling, nompccd):
     while last_run is None or current_run <= last_run:
         if last_run is not None:
             while current_run <= last_run:
-                try:
-                    download_run(current_run, nompccd)
-                    current_run += 1
-                except KeyboardInterrupt:
-                    raise KeyboardInterrupt
-                except:
-                    print "Failed to get %s because..." % str(current_run)
-                    print sys.exc_info()
-            print 'checking for new runs'
-            last_run = get_last_run()
+                while len(mproc.active_children()) < max_jobs:
+                    print current_run, max_jobs, len(mproc.active_children())
+                    try:
+                        p = mproc.Process(target=download_run, args=(current_run, nompccd))
+                        p.start()
+                        #download_run(current_run, nompccd)
+                        current_run += 1
+                    except KeyboardInterrupt:
+                        raise KeyboardInterrupt
+                    except:
+                        print "Failed to get %s because..." % str(current_run)
+                        print sys.exc_info()
+                    print 'checking for new runs'
+                    last_run = get_last_run()
 
         if (last_run is None or current_run > last_run) and keepPolling:
             while last_run is None or current_run > last_run:
@@ -164,6 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--latest", help="download up to latest run number", action="store_true")
     parser.add_argument("-d", "--daemon", help="download up to latest run number and keep polling (only applies if -l is specified)", action="store_true")
     parser.add_argument("-n", "--nompccd", help="Do not include MPCCD detectors", action="store_true")
+    parser.add_argument("-j", "--jobs", help="Number of parallel processes to start. Only valid when latests is activated", action="store")
 
     arguments = parser.parse_args()
 
@@ -172,10 +189,11 @@ if __name__ == "__main__":
     print arguments.daemon
     print arguments.nompccd
 
+    print arguments.jobs
+
     print 'Start run number is "', arguments.run
 
-
     if arguments.latest:
-        download_run_to_latest(int(arguments.run), arguments.daemon, arguments.nompccd)
+        download_run_to_latest(int(arguments.run), arguments.daemon, arguments.nompccd, int(arguments.jobs))
     else:
         download_run(int(arguments.run), arguments.nompccd)
