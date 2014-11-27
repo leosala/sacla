@@ -80,7 +80,12 @@ def download_run(current_run, nompccd):
         os.system(command)
 
         #### Workaround remove empty detector line if exists
-        fix_taglist(taglist_file, nompccd)
+        had_mpccd = fix_taglist(taglist_file, nompccd)
+        if nompccd and not had_mpccd:
+            print 'skipping run as it had no MPCCD detector configured'
+            # cleanup taglist file
+            os.remove(taglist_file)
+            return
 
         # Call DataConvert4
         # DataConvert4 -f test1017.conf -l tag_number1017.list -dir ./ -o test1017.h5
@@ -129,6 +134,9 @@ def download_run_to_latest(start_run, keepPolling, nompccd):
 
 def fix_taglist(txt_file, nompccd):
     import re
+
+    had_mpccd = False
+
     #txt_file='/Users/ebner/Desktop/256664_taglist.txt'
     with open(txt_file, 'r') as file:
         data = file.readlines()
@@ -140,8 +148,10 @@ def fix_taglist(txt_file, nompccd):
                 print 'fix it ...'
             elif re.match('^det,.*', line) and nompccd:
                 print 'remove detectors ...'
+                had_mpccd = True
             else:
                 file.write(line)
+    return had_mpccd
 
 
 if __name__ == "__main__":
