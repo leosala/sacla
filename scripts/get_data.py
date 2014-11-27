@@ -72,6 +72,9 @@ def download_run(current_run):
         print command
         os.system(command)
 
+        #### Workaround remove empty detector line if exists
+        fix_taglist(taglist_file)
+
         # Call DataConvert4
         # DataConvert4 -f test1017.conf -l tag_number1017.list -dir ./ -o test1017.h5
         command = 'DataConvert4 -f %s -l %s -dir %s -o %06d.h5' % (dataconvert_config_file, taglist_file, tmp_data_directory, current_run)
@@ -94,7 +97,7 @@ def download_run_to_latest(start_run, keepPolling):
     last_run = get_last_run()
     current_run = start_run
     while last_run is None or current_run <= last_run:
-        if last_run is not None :
+        if last_run is not None:
             while current_run <= last_run:
                 try:
                     download_run(current_run)
@@ -114,7 +117,19 @@ def download_run_to_latest(start_run, keepPolling):
                 last_run = get_last_run()
 
 
+def fix_taglist(txt_file):
+    import re
+    #txt_file='/Users/ebner/Desktop/256664_taglist.txt'
+    with open(txt_file, 'r') as file:
+        data = file.readlines()
+        file.close()
 
+    with open(txt_file, 'w') as file:
+        for line in data:
+            if re.match('^det,$', line):
+                print 'fix it ...'
+            else:
+                file.write(line)
 
 
 if __name__ == "__main__":
