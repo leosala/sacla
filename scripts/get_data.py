@@ -80,7 +80,7 @@ def download_run(current_run, nompccd):
         os.system(command)
 
         #### Workaround remove empty detector line if exists
-        fix_taglist(taglist_file)
+        fix_taglist(taglist_file, nompccd)
 
         # Call DataConvert4
         # DataConvert4 -f test1017.conf -l tag_number1017.list -dir ./ -o test1017.h5
