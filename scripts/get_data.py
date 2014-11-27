@@ -168,4 +168,4 @@ if __name__ == "__main__":
     if arguments.latest:
         download_run_to_latest(int(arguments.run), arguments.daemon, arguments.nompccd)
     else:
-        download_run(int(arguments.run, arguments.nompccd))
+        download_run(int(arguments.run), arguments.nompccd)
