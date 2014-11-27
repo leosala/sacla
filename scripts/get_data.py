@@ -34,7 +34,11 @@ def get_last_run():
     # a bit dirty, but works...
     for i, l in enumerate(doc):
         if l.find("detectors") != -1:
-            return int(doc[i + 4].strip().strip("</td>"))
+            if len(doc)>(i+4):
+                return int(doc[i + 4].strip().strip("</td>"))
+            else:
+                # We return 0 as we are shure that there are no negative runs
+                return 0
 
 # # FOR TESTING ONLY
 # fortest=6
