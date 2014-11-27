@@ -28,8 +28,7 @@ class Struct:
     def __getitem__(self, val):
         return self.__dict__[val]
 
-## KEEP/ENABLE THIS IF YOU WANT TO HAVE AUTOMATIC TO JSON TRANSLATION
-#  def __repr__(self):
-#    return '{%s}' % str(', '.join('%s : %s' % (k, repr(v)) for
-#      (k, v) in self.__dict__.iteritems()))
+    def __repr__(self):
+        return '{%s}' % str(', '.join('%s : %s' % (k, repr(v)) for
+            (k, v) in self.__dict__.iteritems()))
 
