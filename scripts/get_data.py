@@ -38,7 +38,7 @@ def get_last_run():
                 return int(doc[i + 4].strip().strip("</td>"))
             except:
                 # We return 0 as we are shure that there are no negative runs
-                return 0
+                return None
 
 # # FOR TESTING ONLY
 # fortest=6
@@ -93,21 +93,22 @@ def download_run_to_latest(start_run, keepPolling):
 
     last_run = get_last_run()
     current_run = start_run
-    while current_run <= last_run:
-        while current_run <= last_run:
-            try:
-                download_run(current_run)
-                current_run += 1
-            except KeyboardInterrupt:
-                raise KeyboardInterrupt
-            except:
-                print "Failed to get %s because..." % str(current_run)
-                print sys.exc_info()
-        print 'checking for new runs'
-        last_run = get_last_run()
+    while last_run is None or current_run <= last_run:
+        if last_run is not None :
+            while current_run <= last_run:
+                try:
+                    download_run(current_run)
+                    current_run += 1
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt
+                except:
+                    print "Failed to get %s because..." % str(current_run)
+                    print sys.exc_info()
+            print 'checking for new runs'
+            last_run = get_last_run()
 
-        if current_run > last_run and keepPolling:
-            while current_run > last_run:
+        if (last_run is None or current_run > last_run) and keepPolling:
+            while last_run is None or current_run > last_run:
                 print 'no new runs - sleep ...'
                 time.sleep(5)
                 last_run = get_last_run()
