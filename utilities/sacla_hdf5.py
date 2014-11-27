@@ -136,7 +136,7 @@ def syncdaq_get(start_time, end_time, key, tags=None, cond=None):
         return data
     else:
         # if not tags in input, I need the returned tags list
-        return tags, data
+        return data_tags, data
 
 
 def get_metadata(runs, variables):
@@ -171,7 +171,7 @@ def get_metadata(runs, variables):
 
     return metadata
 
-#@profile
+
 def get_daq_data(variables, run=None, start_time=None, stop_time=None, start_tag=None, stop_tag=None, cond=None):
     """
     Get generic daq metadata from the SACLA daq system
