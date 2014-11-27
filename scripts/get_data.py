@@ -102,6 +102,7 @@ def download_run(current_run, nompccd):
 
         if not VERBOSE:
             command += " &> /dev/null"
+
         print command
         os.system(command)
 
@@ -124,7 +125,6 @@ def download_run_to_latest(start_run, keepPolling, nompccd, max_jobs=1):
     current_run = start_run
     while last_run is None or current_run <= last_run:
         if last_run is not None:
-            print current_run, max_jobs, len(mproc.active_children())
             while current_run <= last_run:
                 while len(mproc.active_children()) < max_jobs:
                     print current_run, max_jobs, len(mproc.active_children())
@@ -188,8 +188,8 @@ if __name__ == "__main__":
     print arguments.run
     print arguments.daemon
     print arguments.nompccd
-    print arguments.jobs
 
+    print arguments.jobs
 
     print 'Start run number is "', arguments.run
 

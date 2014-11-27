@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os
 import sys
 import glob
@@ -28,9 +30,20 @@ def load(htype):
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("file", help="hdf5 file to be analyzed")
+
+    arguments = parser.parse_args()
+
+    print arguments.file
+    fname = arguments.file
+
+
     plugins_list = get_plugins_list()
     print plugins_list
-    fname = "/work/leonardo/243561.h5"
+    # fname = "/work/leonardo/243561.h5"
     plugin_conf = {}
     plugin_conf['create_spectra'] = {"roi": [[0, 1024], [325, 335]]}
     for p in plugins_list:
