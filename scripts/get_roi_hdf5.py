@@ -13,6 +13,12 @@ from time import sleep
 
 import pyinotify
 
+# import logging
+# logging.basicConfig(filename='tape_migration.log',
+#                     format="%(process)d:%(levelname)s:%(asctime)s:%(message)s",
+#                     level=logging.DEBUG)
+
+
 # Configurables
 # ROIs: one per detector. If none, please put []
 rois = [[[0, 1024], [440, 512]], [[0, 1024], [460, 490]]]  # X, Y
@@ -56,10 +62,7 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
     #runs = sacla_hdf5.get_run_metadata(f)
     #metadata = sacla_hdf5.get_metadata(runs, variables)
     #sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
-    if rois != []:
-        f_out = h5py.File(hdf5FileName_ROI, 'a', driver="core")
-    else:
-        f_out = h5py.File(hdf5FileName_ROI, 'a', )
+    f_out = h5py.File(hdf5FileName_ROI, 'a', )
     # f = h5py.File('parallel_test.hdf5', 'w', driver='mpio', comm=MPI.COMM_WORLD)
 
     if dark_file != "":
