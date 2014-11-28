@@ -174,7 +174,7 @@ def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_name
         if not os.path.isfile(hdf5FileName_ROI):
             get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, current_run, rois, detector_names, pede_thr=pede_thr, dark_file=dark_file)
         else:
-            print "ROI for run  "+current_run+ " already exists. Skipping ..."
+            print "ROI for run  %06d already exists. Skipping ..." % current_run
 
         current_run += 1
 
