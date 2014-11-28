@@ -12,9 +12,10 @@ def check_for_missing_files(file_path, postfix=""):
 
     # Filter out all files matching the naming convention 000000.h5
     data_files = [f for f in listdir(file_path) if (isfile(join(file_path, f)) and re.match('^[0-9]{6}'+postfix+'.h5$', f))]
-    current_number = int(data_files[0].replace(postfix+'.h5', ''))
+
 
     data_files.sort()
+    current_number = int(data_files[0].replace(postfix+'.h5', ''))
 
     missing_numbers = []
 
@@ -43,4 +44,5 @@ if __name__ == "__main__":
     missing_files = check_for_missing_files(arguments.directory, arguments.postfix)
 
     print 'Following files are missing ...'
+    print len(missing_files)
     print missing_files
