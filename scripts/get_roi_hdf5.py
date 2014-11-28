@@ -59,9 +59,9 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
         sys.exit(-1)
 
     f = h5py.File(hdf5FileName, 'r')
-    runs = sacla_hdf5.get_run_metadata(f)
-    metadata = sacla_hdf5.get_metadata(runs, variables)
-    sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
+    #runs = sacla_hdf5.get_run_metadata(f)
+    #metadata = sacla_hdf5.get_metadata(runs, variables)
+    #sacla_hdf5.write_metadata(hdf5FileName_ROI, metadata)
     if rois != []:
         f_out = h5py.File(hdf5FileName_ROI, 'a', driver="core")
     else:
