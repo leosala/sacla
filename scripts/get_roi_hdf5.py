@@ -194,7 +194,7 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--dark_file", help="""File containing the dark corrections, one per detector. Default: not used""", action="store", default="")
 
     parser.add_argument("-l", "--latest", help="convert up to the latest run number", action="store_true")
-    parser.add_argument("-d", "--daemon", help="convert up to latest run number and keep polling for new files (only applies if -l is specified)", action="store_true")
+    # parser.add_argument("-", "--daemon", help="convert up to latest run number and keep polling for new files (only applies if -l is specified)", action="store_true")
 
 
     args = parser.parse_args()
@@ -204,4 +204,4 @@ if __name__ == '__main__':
         hdf5FileName_ROI = args.outdir + '/' + args.run + '_roi.h5'
         get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
     else:
-        get_roi_latest(args.daemon, args.indir, args.outdir, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
+        get_roi_latest(True, args.indir, args.outdir, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
