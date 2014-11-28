@@ -4,6 +4,7 @@ import h5py
 import sys
 import os
 import numpy as np
+import time
 # loading some utils
 sys.path.append(os.environ["PWD"] + "/../")
 from utilities import sacla_hdf5
@@ -48,7 +49,7 @@ variables = {
 }
 
 
-def get_roi_hdf5(indir, outdir, run, rois, detector_names, pede_thr=-1, dark_file=""):
+def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede_thr=-1, dark_file=""):
 
     if rois == []:
         for d in detector_names:
@@ -56,8 +57,6 @@ def get_roi_hdf5(indir, outdir, run, rois, detector_names, pede_thr=-1, dark_fil
     if len(rois) != len(detector_names):
         print "ERROR: please put one ROI per detector!"
         sys.exit(-1)
-    hdf5FileName = indir + '/' + run + '.h5'
-    hdf5FileName_ROI = outdir + '/' + run + '_roi.h5'
 
     f = h5py.File(hdf5FileName, 'r')
     runs = sacla_hdf5.get_run_metadata(f)
@@ -117,57 +116,92 @@ def get_roi_hdf5(indir, outdir, run, rois, detector_names, pede_thr=-1, dark_fil
     print "Run %s done!" % str(run)
 
 
-class PClose(pyinotify.ProcessEvent):
-    def _run_cmd(self, run):
-        """Command ran when a new file is closed"""
-        try:
-            get_roi_hdf5(self.indir, self.outdir, run, rois, detector_names, pede_thr=self.pede_thr, dark_file=self.dark_file)
-        except:
-            print "ERROR: cannot get roi for %s" % run
-            print sys.exc_info()
+# class PClose(pyinotify.ProcessEvent):
+#     def _run_cmd(self, run):
+#         """Command ran when a new file is closed"""
+#         try:
+#             get_roi_hdf5(self.indir, self.outdir, run, rois, detector_names, pede_thr=self.pede_thr, dark_file=self.dark_file)
+#         except:
+#             print "ERROR: cannot get roi for %s" % run
+#             print sys.exc_info()
+#
+#     def process_IN_CLOSE_WRITE(self, event):
+#         f = event.name and os.path.join(event.path, event.name) or event.path
+#         if event.name.find("roi.h5") != -1:
+#             print "skipping %s" % event.name
+#         else:
+#             run = str(event.name.split(".")[0])
+#             print "%s closed, waiting 5 secs to be sure..." % event.name
+#             sleep(5)
+#             self._run_cmd(run)
+#
+#
+# def auto_reduce(indir, outdir, pede_thr=-1, dark_file=""):
+#     print "Starting monitoring.... please wait"
+#     wm = pyinotify.WatchManager()
+#     handler = PClose()
+#     handler.indir = indir
+#     handler.outdir = outdir
+#     handler.pede_thr = pede_thr
+#     handler.dark_file = dark_file
+#
+#     notifier = pyinotify.Notifier(wm, default_proc_fun=handler)
+#     mask = pyinotify.IN_CLOSE_WRITE  # | pyinotify.IN_CREATE
+#
+#     wm.add_watch(indir, mask, rec=True, auto_add=True)
+#     print '==> Start completed, monitoring %s (type C^c to exit)' % indir
+#     notifier.loop()
+#     print "loop stopped, exiting"
 
-    def process_IN_CLOSE_WRITE(self, event):
-        f = event.name and os.path.join(event.path, event.name) or event.path
-        if event.name.find("roi.h5") != -1:
-            print "skipping %s" % event.name
+
+def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_names, pede_thr=-1, dark_file=""):
+
+    current_run = run
+
+    while True:
+        hdf5FileName = args.indir + '/' + current_run + '.h5'
+        hdf5FileName_ROI = args.outdir + '/' + current_run + '_roi.h5'
+
+        if not os.path.isfile(hdf5FileName):
+            if not keep_polling:
+                print "No new files to convert"
+                break
+
+            while not os.path.isfile(hdf5FileName):
+                # wait for file to appear
+                time.sleep(5)
+
+        if not os.path.isfile(hdf5FileName_ROI):
+            get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, current_run, rois, detector_names, pede_thr=pede_thr, dark_file=dark_file)
         else:
-            run = str(event.name.split(".")[0])
-            print "%s closed, waiting 5 secs to be sure..." % event.name
-            sleep(5)
-            self._run_cmd(run)
+            print "ROI for run  "+current_run+ " already exists. Skipping ..."
+
+        current_run += 1
 
 
-def auto_reduce(indir, outdir, pede_thr=-1, dark_file=""):
-    print "Starting monitoring.... please wait"
-    wm = pyinotify.WatchManager()
-    handler = PClose()
-    handler.indir = indir
-    handler.outdir = outdir
-    handler.pede_thr = pede_thr
-    handler.dark_file = dark_file
 
-    notifier = pyinotify.Notifier(wm, default_proc_fun=handler)
-    mask = pyinotify.IN_CLOSE_WRITE  # | pyinotify.IN_CREATE
 
-    wm.add_watch(indir, mask, rec=True, auto_add=True)
-    print '==> Start completed, monitoring %s (type C^c to exit)' % indir
-    notifier.loop()
-    print "loop stopped, exiting"
+    return
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('run', metavar='run', type=int, nargs="*", help='Run number to reduce, assuming the file is called <runnumber>.h5. If no run number is given, then the script will start watching the input directory')
+    parser.add_argument('run', metavar='run', type=int, help='Run number to reduce, assuming the file is called <runnumber>.h5. If no run number is given, then the script will start watching the input directory')
     parser.add_argument("-i", "--indir", help="""Directory where input files are stored. Default: .""", action="store", default=".")
     parser.add_argument("-o", "--outdir", help="""Directory where output files are stored. Default: .""", action="store", default=".")
     parser.add_argument("-t", "--pedestal_thr", help="""Threshold to be used when computing pedestal. Default: not computed""", action="store", default=-1)
     parser.add_argument("-d", "--dark_file", help="""File containing the dark corrections, one per detector. Default: not used""", action="store", default="")
 
+    parser.add_argument("-l", "--latest", help="convert up to the latest run number", action="store_true")
+    parser.add_argument("-d", "--daemon", help="convert up to latest run number and keep polling for new files (only applies if -l is specified)", action="store_true")
+
+
     args = parser.parse_args()
 
-    if args.run != []:
-        run = str(args.run[0])
-        get_roi_hdf5(args.indir, args.outdir, run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
-    else:
-        auto_reduce(args.indir, args.outdir, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
+    if not args.latest:
+        hdf5FileName = args.indir + '/' + args.run + '.h5'
+        hdf5FileName_ROI = args.outdir + '/' + args.run + '_roi.h5'
+        get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
+     else:
+        get_roi_latest(args.daemon, args.indir, args.outdir, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
