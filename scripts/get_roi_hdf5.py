@@ -70,7 +70,7 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
 
     if dark_file != "":
         f_dark = h5py.File(dark_file, "r")
-    run_dst = f["/run_" + run]
+    run_dst = f["/run_%06d" % run]
 
     detectors_list = []
     detector_dstnames = [i for i in run_dst.keys() if i.find("detector_2d") != -1]
@@ -78,22 +78,22 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
         if run_dst[d + "/detector_info/detector_name"].value in detector_names:
             detectors_list.append(d)
 
-    tag_list = f["/run_" + run + "/event_info/tag_number_list"][:]
+    tag_list = f["/run_%06d/event_info/tag_number_list" % run][:]
     DET_INFO_DSET = "/detector_info/detector_name"
     RUN_INFO_DST = ["event_info", "exp_info", "run_info"]
     file_info = f["file_info"]
     f.copy(file_info, f_out)
     try:
-        f_out.create_group("/run_" + run)
+        f_out.create_group("/run_%06d" % run)
     except:
         print sys.exc_info()[1]
 
     for info_dst in RUN_INFO_DST:
         info = run_dst[info_dst]
-        f.copy(info, f_out["/run_" + run])
+        f.copy(info, f_out["/run_%06d" % run])
 
     for i, dreal in enumerate(detectors_list):
-        detector_dsetname = "/run_" + run + "/" + dreal
+        detector_dsetname = "/run_%06d/%s" % (run, dreal)
         print detector_dsetname
         try:
             fout_grp = f_out.create_group(detector_dsetname)
