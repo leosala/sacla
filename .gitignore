@@ -5,7 +5,3 @@
 notebooks/.ipynb_checkpoints
 *.so
 *.o
-*.png
-*.txt
-#*
-*.csv

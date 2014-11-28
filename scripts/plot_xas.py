@@ -64,15 +64,16 @@ if __name__ == "__main__":
 
     index_name = args.scan_type
 
-    for i in range(int(args.start_run), int(args.end_run)):
+    for i in range(int(args.start_run), int(args.end_run) + 1):
         fname = dir + str(i) + "_nompccd.h5"
         run = fname.split("/")[-1].replace("_roi", "").replace(".h5", "").replace("_nompccd", "")
-        
+
         try:
             f = h5py.File(fname, "r")
             tags = f["/run_" + run + "/event_info/tag_number_list"][:]
         except:
-            print "Last good run was %i" % i
+            print "Last good run was %d" % int(i - 1)
+            args.end_run = str(i - 1)
             break
 
         photon_energy = f["/run_" + run + "/event_info/bl_3/oh_2/photon_energy_in_eV"][:]
@@ -91,7 +92,7 @@ if __name__ == "__main__":
         delay = np.array(f["/run_" + run + "/event_info/bl_3/eh_4/laser/delay_line_motor_29"][:])
         delay = d_conv(delay, t0=221)
 
-        is_data = (is_xray == 1) * (photon_energy > 9651) * (photon_energy < 9700) * (iol < 0.5) * (iou < 0.5) * (iol > 0.) * (iou > 0.)
+        is_data = (is_xray == 1) * (photon_energy > 9651) * (photon_energy < 9700) * (iol < 0.5) * (iou < 0.5) * (iol > 0.) * (iou > 0.) * (nd > -1)
 
         itot = iol[is_data] + iou[is_data]
         spd = spd[is_data][itot > 0]
@@ -138,8 +139,7 @@ if __name__ == "__main__":
     df_off_std = df[df["laser"] == 0].std(level=0)
 
     df_diff_std = np.sqrt((df_on_std) * (df_on_std) + (df_off_std) * (df_off_std))
-    print df_on["absorp"]
-
+ 
     df_on["absorp"].plot(label="laser on", color="b", linestyle="-", marker="o")
     df_off["absorp"].plot(label="laser off", color="r", linestyle="-", marker="o")
     df_diff["absorp"].plot(label="10x on - off", color="k", linestyle="-", marker="o")
