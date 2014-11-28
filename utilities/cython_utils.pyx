@@ -65,37 +65,47 @@ def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, i
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, DTYPE2_t first_tag, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[], thr=-9999):
+def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, DTYPE2_t first_tag, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[], DTYPE_t thr=-9999):
 
     cdef int x = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[0]
     cdef int y = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[1]
     cdef int i = 0
     cdef int tot = tags_list.shape[0]
     cdef np.ndarray[np.uint8_t, cast = True, ndim = 1] total_mask = np.ones(tot, dtype=np.uint8)
-    cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([x, y], dtype=DTYPE)
-    cdef np.ndarray[DTYPE_t, ndim = 2] data = np.zeros([x, y], dtype=DTYPE)
-
+    cdef np.ndarray[DTYPE_t, ndim = 2] corr_data
+    cdef np.ndarray[DTYPE_t, ndim = 2] data
+    cdef int xl
+    cdef int xh
+    cdef int yl
+    cdef int yh
     masks_tmp = np.array(masks)
     # is it a list of lists?
     if len(masks_tmp.shape) == 3:
         masks_np = masks_tmp
-    else:
+    elif len(masks_tmp.shape) == 2:
         masks_np = masks_tmp[np.newaxis, ]
+    elif len(masks_tmp.shape) == 1:
+        masks_np = masks_tmp[np.newaxis, np.newaxis, ]
 
     spectra = []
 
     if roi == []:
         roi = [[0, x], [0, y]]
-    else:
-        corr_data = np.zeros([roi[0][1] - roi[0][0], roi[1][1] - roi[1][0]], dtype=DTYPE)
-    print "ROI", roi
-    if corr is None:
-        corr = np.zeros([x, y], dtype=DTYPE)
 
+    xl = roi[0][0]
+    xh = roi[0][1]
+    yl = roi[1][0]
+    yh = roi[1][1]
+
+    corr_data = np.zeros([xh - xl, yh - yl], dtype=DTYPE)
+    data = np.zeros([xh - xl, yh - yl], dtype=DTYPE)
+
+    if corr is None:
+        corr = np.zeros([xh - xl, yh - yl], dtype=DTYPE)
+    
     for masks_list in masks_np:
         total_mask = np.ones(tot, dtype=DTYPEB)
-
-        corr_data = np.zeros([roi[0][1] - roi[0][0], roi[1][1] - roi[1][0]], dtype=DTYPE)
+        corr_data = np.zeros([xh - xl, yh - yl], dtype=DTYPE)
         if masks != []:
             total_mask = masks_list[0].copy()
             if len(masks) == 1:
@@ -103,19 +113,17 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, DTYPE2_t 
             for m in range(1, len(masks_list)):
                 total_mask *= masks_list[m]
 
-        print tags_list[total_mask].shape
         flag = 0
-        for i in tags_list[total_mask]:
+        for t in tags_list[total_mask]:
             try:
-                data = h5_dst["tag_" + str(i) + "/detector_data"][roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]] - corr[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
-                for i in xrange(0, x):
-                    for j in xrange(0, y):
+                data = h5_dst["tag_" + str(t) + "/detector_data"][xl:xh, yl:yh] - corr  # [xl:xh, yl:yh]
+                for i in xrange(0, xh - xl):
+                    for j in xrange(0, yh - yl):
                         if data[i, j] > thr:
                             corr_data[i, j] += data[i, j]
-                    #print corr_data.shape[0], corr_data.shape[1]
             except:
-                msg = "Tag " + str(i) + ": cannot find detector data"
-
+                print sys.exc_info()
+                msg = "Tag " + str(t) + ": cannot find detector data"
         spectra.append([corr_data, corr_data.sum(axis=1)])
 
     if len(spectra) == 1:
