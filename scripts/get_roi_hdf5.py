@@ -203,5 +203,5 @@ if __name__ == '__main__':
         hdf5FileName = args.indir + '/' + args.run + '.h5'
         hdf5FileName_ROI = args.outdir + '/' + args.run + '_roi.h5'
         get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
-     else:
+    else:
         get_roi_latest(args.daemon, args.indir, args.outdir, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
