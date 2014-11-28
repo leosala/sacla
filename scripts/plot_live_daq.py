@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import h5py
 import sys
 import os

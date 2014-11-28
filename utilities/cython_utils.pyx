@@ -65,7 +65,7 @@ def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, i
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, DTYPE2_t first_tag, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[]):
+def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, DTYPE2_t first_tag, np.ndarray[DTYPE_t, ndim=2] corr=None, roi=[], masks=[], thr=-9999):
 
     cdef int x = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[0]
     cdef int y = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[1]
@@ -73,6 +73,7 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, DTYPE2_t 
     cdef int tot = tags_list.shape[0]
     cdef np.ndarray[np.uint8_t, cast = True, ndim = 1] total_mask = np.ones(tot, dtype=np.uint8)
     cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([x, y], dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim = 2] data = np.zeros([x, y], dtype=DTYPE)
 
     masks_tmp = np.array(masks)
     # is it a list of lists?
@@ -106,8 +107,12 @@ def get_spectrum_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, DTYPE2_t 
         flag = 0
         for i in tags_list[total_mask]:
             try:
-                corr_data += h5_dst["tag_" + str(i) + "/detector_data"][roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]] - corr[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
-                #print corr_data.shape[0], corr_data.shape[1]
+                data = h5_dst["tag_" + str(i) + "/detector_data"][roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]] - corr[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
+                for i in xrange(0, x):
+                    for j in xrange(0, y):
+                        if data[i, j] > thr:
+                            corr_data[i, j] += data[i, j]
+                    #print corr_data.shape[0], corr_data.shape[1]
             except:
                 msg = "Tag " + str(i) + ": cannot find detector data"
 
