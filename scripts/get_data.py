@@ -7,7 +7,7 @@
 # Use: qsub -I to get an interactive shell on a node
 
 
-#data_directory= "/work/leonardo"  
+#data_directory= "/work/leonardo"
 data_directory = '/work/timbvd/hdf5'
 #data_directory='/Users/ebner/Desktop/data'
 tmp_data_directory='%s/tmp' % data_directory
@@ -56,9 +56,15 @@ def get_last_run():
 #     return run
 # # FOR TESTING ONLY
 
+def download_run_function(current_run, nompccd, result_queue):
+    try:
+        download_run(current_run, nompccd)
+        result_queue.put(0)
+    except:
+        print sys.exc_info()[0]
+        result_queue.put(current_run)
 
 def download_run(current_run, nompccd):
-    print current_run
     tmp_data_file = '%s/%06d.h5' % (tmp_data_directory, current_run)
     data_file = '%s/%06d.h5' % (data_directory, current_run)
     if nompccd:
@@ -84,7 +90,12 @@ def download_run(current_run, nompccd):
 
         command = 'MakeTagList -b %d -r %06d -inp %s -out %s' % (beamline, current_run, maketaglist_condition_file, taglist_file)
         print command
-        os.system(command)
+        try:
+            os.system(command)
+        except:
+            print "Cannot run MakeTagList because:"
+            print sys.exc_info()[0]
+            raise RuntimeError
 
         #### Workaround remove empty detector line if exists
         had_mpccd = fix_taglist(taglist_file, nompccd)
@@ -102,7 +113,6 @@ def download_run(current_run, nompccd):
 
         if not VERBOSE:
             command += " &> /dev/null"
-
         print command
         os.system(command)
 
@@ -123,13 +133,17 @@ def download_run_to_latest(start_run, keepPolling, nompccd, max_jobs=1):
 
     last_run = get_last_run()
     current_run = start_run
+    results_queue = mproc.Queue()
     while last_run is None or current_run <= last_run:
         if last_run is not None:
             while current_run <= last_run:
                 while len(mproc.active_children()) < max_jobs:
-                    print current_run, max_jobs, len(mproc.active_children())
                     try:
-                        p = mproc.Process(target=download_run, args=(current_run, nompccd))
+                        if current_run > last_run:
+                            last_run = get_last_run()
+                            print 'No more jobs left, checking for new runs'
+                            break
+                        p = mproc.Process(target=download_run_function, args=(current_run, nompccd, results_queue))
                         p.start()
                         #download_run(current_run, nompccd)
                         current_run += 1
@@ -138,9 +152,19 @@ def download_run_to_latest(start_run, keepPolling, nompccd, max_jobs=1):
                     except:
                         print "Failed to get %s because..." % str(current_run)
                         print sys.exc_info()
-                    print 'checking for new runs'
-                    last_run = get_last_run()
+                while not results_queue.empty():
+                    res = results_queue.get()
+                    if res != 0:
+                        print "Failed to get %s because..." % str(current_run)
+                        print "Trying again..."
+                        current_run = res
+                        break
+                if len(mproc.active_children()) == 0:
+                    print 'No more jobs left, checking for new runs'
+                last_run = get_last_run()
 
+        if current_run > get_last_run():
+            current_run = get_last_run()
         if (last_run is None or current_run > last_run) and keepPolling:
             while last_run is None or current_run > last_run:
                 print 'no new runs - sleep ...'
@@ -180,7 +204,7 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--latest", help="download up to latest run number", action="store_true")
     parser.add_argument("-d", "--daemon", help="download up to latest run number and keep polling (only applies if -l is specified)", action="store_true")
     parser.add_argument("-n", "--nompccd", help="Do not include MPCCD detectors", action="store_true")
-    parser.add_argument("-j", "--jobs", help="Number of parallel processes to start. Only valid when latests is activated", action="store")
+    parser.add_argument("-j", "--jobs", help="Number of parallel processes to start. Only valid when latests is activated", action="store", default=1)
 
     arguments = parser.parse_args()
 
@@ -188,8 +212,8 @@ if __name__ == "__main__":
     print arguments.run
     print arguments.daemon
     print arguments.nompccd
-
     print arguments.jobs
+
 
     print 'Start run number is "', arguments.run
 

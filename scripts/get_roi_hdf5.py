@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import h5py
 import sys
 import os
@@ -13,15 +11,15 @@ from time import sleep
 
 import pyinotify
 
-# import logging
-# logging.basicConfig(filename='tape_migration.log',
-#                     format="%(process)d:%(levelname)s:%(asctime)s:%(message)s",
-#                     level=logging.DEBUG)
+import logging
+logging.basicConfig(filename='tape_migration.log',
+                    format="%(process)d:%(levelname)s:%(asctime)s:%(message)s",
+                    level=logging.DEBUG)
 
 
 # Configurables
 # ROIs: one per detector. If none, please put []
-rois = [[[0, 1024], [325, 340]], [[0, 1024], [325, 340]]]  # X, Y
+rois = [[[0, 1024], [440, 512]], [[0, 1024], [460, 490]]]  # X, Y
 # Detector names
 #detector_names = ["MPCCD-1N0-M01-001", "MPCCD-1-1-002", "MPCCD-1-1-004", ]
 detector_names = ["MPCCD-1-1-011", "MPCCD-1N0-M01-002"]
@@ -37,13 +35,13 @@ variables = {
     #'LaserOff': 'xfel_bl_lh1_shutter_1_close_valid/status',
     #'Delays': 'xfel_bl_3_st_3_motor_25/position',
     #'Mono': 'xfel_bl_3_tc_mono_1_theta/position',
-    'APD': 'xfel_bl_3_st_3_pd_14_fitting_peak/voltage',
+    #'APD': 'xfel_bl_3_st_3_pd_14_fitting_peak/voltage',
     #'LasI': 'xfel_bl_3_st_3_pd_4_peak/voltage',  # Extra info laser I
     #'Xshut': 'xfel_bl_3_shutter_1_open_valid/status',  # X-ray on
     #'Xstat': 'xfel_mon_bpm_bl3_0_3_beamstatus/summary',  # X-ray status
     #'X3':  'xfel_bl_3_st_2_bm_1_pd_peak/voltage',  # X-ray i 3
-    'X41': 'xfel_bl_3_st_3_pd_3_fitting_peak/voltage',  # X-ray i 4
-    'X42': 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage',  # X-ray i 4
+    #'X41': 'xfel_bl_3_st_3_pd_3_fitting_peak/voltage',  # X-ray i 4
+    #'X42': 'xfel_bl_3_st_3_pd_4_fitting_peak/voltage',  # X-ray i 4
     #'Johann': 'xfel_bl_3_st_3_motor_42/position',  # Johann theta
     #'APD_trans': 'xfel_bl_3_st_3_motor_17/position'  # Johann det
 }
@@ -75,6 +73,7 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
     detectors_list = []
     detector_dstnames = [i for i in run_dst.keys() if i.find("detector_2d") != -1]
     for d in detector_dstnames:
+        print d + "/detector_info/detector_name"
         if run_dst[d + "/detector_info/detector_name"].value in detector_names:
             detectors_list.append(d)
 
