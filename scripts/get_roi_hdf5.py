@@ -159,8 +159,8 @@ def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_name
     current_run = run
 
     while True:
-        hdf5FileName = args.indir + '/' + current_run + '.h5'
-        hdf5FileName_ROI = args.outdir + '/' + current_run + '_roi.h5'
+        hdf5FileName = '%s/%06d.h5' % (input_dir, current_run)
+        hdf5FileName_ROI = '%s/%06d_roi.h5' % (output_dir, current_run)
 
         if not os.path.isfile(hdf5FileName):
             if not keep_polling:
@@ -200,8 +200,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if not args.latest:
-        hdf5FileName = args.indir + '/' + args.run + '.h5'
-        hdf5FileName_ROI = args.outdir + '/' + args.run + '_roi.h5'
+        hdf5FileName = '%s/%06d.h5' % (args.indir, args.run)
+        hdf5FileName_ROI = '%s/%06d_roi.h5' % (args.outdir, args.run)
         get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
     else:
         get_roi_latest(True, args.indir, args.outdir, args.run, rois, detector_names, pede_thr=float(args.pedestal_thr), dark_file=args.dark_file)
