@@ -116,44 +116,6 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
     print "Run %s done!" % str(run)
 
 
-# class PClose(pyinotify.ProcessEvent):
-#     def _run_cmd(self, run):
-#         """Command ran when a new file is closed"""
-#         try:
-#             get_roi_hdf5(self.indir, self.outdir, run, rois, detector_names, pede_thr=self.pede_thr, dark_file=self.dark_file)
-#         except:
-#             print "ERROR: cannot get roi for %s" % run
-#             print sys.exc_info()
-#
-#     def process_IN_CLOSE_WRITE(self, event):
-#         f = event.name and os.path.join(event.path, event.name) or event.path
-#         if event.name.find("roi.h5") != -1:
-#             print "skipping %s" % event.name
-#         else:
-#             run = str(event.name.split(".")[0])
-#             print "%s closed, waiting 5 secs to be sure..." % event.name
-#             sleep(5)
-#             self._run_cmd(run)
-#
-#
-# def auto_reduce(indir, outdir, pede_thr=-1, dark_file=""):
-#     print "Starting monitoring.... please wait"
-#     wm = pyinotify.WatchManager()
-#     handler = PClose()
-#     handler.indir = indir
-#     handler.outdir = outdir
-#     handler.pede_thr = pede_thr
-#     handler.dark_file = dark_file
-#
-#     notifier = pyinotify.Notifier(wm, default_proc_fun=handler)
-#     mask = pyinotify.IN_CLOSE_WRITE  # | pyinotify.IN_CREATE
-#
-#     wm.add_watch(indir, mask, rec=True, auto_add=True)
-#     print '==> Start completed, monitoring %s (type C^c to exit)' % indir
-#     notifier.loop()
-#     print "loop stopped, exiting"
-
-
 def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_names, pede_thr=-1, dark_file=""):
 
     current_run = run
@@ -177,15 +139,13 @@ def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_name
             print "ROI for run  %06d already exists. Skipping ..." % current_run
 
         current_run += 1
-
-
-
-
     return
 
 
 if __name__ == '__main__':
+
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument('run', metavar='run', type=int, help='Run number to reduce, assuming the file is called <runnumber>.h5. If no run number is given, then the script will start watching the input directory')
     parser.add_argument("-i", "--indir", help="""Directory where input files are stored. Default: .""", action="store", default=".")
@@ -194,8 +154,6 @@ if __name__ == '__main__':
     parser.add_argument("-d", "--dark_file", help="""File containing the dark corrections, one per detector. Default: not used""", action="store", default="")
 
     parser.add_argument("-l", "--latest", help="convert up to the latest run number", action="store_true")
-    # parser.add_argument("-", "--daemon", help="convert up to latest run number and keep polling for new files (only applies if -l is specified)", action="store_true")
-
 
     args = parser.parse_args()
 
