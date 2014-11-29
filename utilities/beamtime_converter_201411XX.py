@@ -13,8 +13,6 @@ def dataset_name(name):
         return wrapper
     return decorator
 
-#@dataset_name("pump_probe_delay")
-
 
 def get_generic(value):
     """"""
@@ -35,7 +33,7 @@ def get_delay_from_pulse(pulse, t0=0):
     Translate delay pulses (motor steps) into ps
     """
     magic_factor = 6.66713134 / 1000.
-    return float(pulse) * magic_factor
+    return float(pulse) * magic_factor - t0
 
 
 def get_energy_from_theta(theta_position):

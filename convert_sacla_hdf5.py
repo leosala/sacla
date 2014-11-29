@@ -158,7 +158,7 @@ if __name__ == "__main__":
     daq_info["bl2_I0mon_down"] = {"fname": "X2Up.txt", "units": "V"}
     daq_info["bl2_I0mon_right"] = {"fname": "X2Right.txt", "units": "V"}
     daq_info["bl2_I0mon_left"] = {"fname": "X2Left.txt", "units": "V"}
-    daq_info["bl3_apd"] = {"fname": "APD.txt", "units": "V"}
+    daq _info["bl3_apd"] = {"fname": "APD.txt", "units": "V"}
     daq_info["johann_theta"] = {"fname": "Johann.txt", "units": "pulse"}
 
     run_list = []

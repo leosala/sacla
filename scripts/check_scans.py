@@ -12,7 +12,7 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--plot", help="plot, do not save", action="store_true")
 
     #parser.add_argument("-d", "--daemon", help="download up to latest run number and keep polling (only applies if -l is specified)", action="store_true")
-    url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?from_time=2014%2F11%2F27+10%3A20%3A52&to_time=2014%2F11%2F28+23%3A59%3A52&search_key=time&admin=&bl=3&mode=Search"
+    url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?from_time=2014%2F11%2F27+10%3A20%3A52&to_time=2014%2F11%2F30+23%3A59%3A52&search_key=time&admin=&bl=3&mode=Search"
     rdf = pd.read_html(url, header=0)[1]
     rdf = rdf.set_index("run #")
 
@@ -42,6 +42,8 @@ if __name__ == "__main__":
         for idx in rdf.index.tolist():
             t = rdf["start trigger"][idx]
             if t < df.index[0]:
+                continue 
+            if t > df.index[-1]:
                 continue
             plt.axvline(t)
             #print t,df["Mono"].mean()
