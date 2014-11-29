@@ -98,7 +98,7 @@ def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_name
                 # wait for file to appear
                 time.sleep(5)
 
-        tmp_file = hdf5FileName+'.tmp'
+        tmp_file = hdf5FileName_ROI+'.tmp'
         if not os.path.isfile(hdf5FileName_ROI) and not os.path.isfile(tmp_file):
             open(tmp_file, 'a').close()
             get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, current_run, rois, detector_names, pede_thr=pede_thr, dark_file=dark_file)
