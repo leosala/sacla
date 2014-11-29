@@ -16,3 +16,11 @@ Gets data from the SACLA data buffer and converts them into HDF5 (via Maketaglis
 # `get_last_runs`
 
 It gets the last run from 
+
+
+# get_roi_hdf5
+
+Warning: ROIs and DAQ quantities to be added are hardcoded at the beginning of: sacla/scripts/get_roi_hdf5.py
+
+Example:
+`python get_roi_hdf5.py -i /work/timbvd/hdf5 -o /work/leonardo/roi -d /work/timbvd/dark/dark_256635.h5`

@@ -119,8 +119,10 @@ def get_energy_from_theta(thetaPosition):
 def get_spectrum_sacla(h5_dst, tags_list, corr=None, roi=[], masks=[], thr=-9999):
     first_tag = 0
     for t in h5_dst.keys():
+        print t[0:4]
         if t[0:4] == "tag_":
             first_tag = int(t[4:])
+            print first_tag
             break
 
     return cython_utils.get_spectrum_sacla(h5_dst, tags_list, first_tag, corr=corr, roi=roi, masks=masks, thr=thr)

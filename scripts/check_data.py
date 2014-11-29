@@ -75,7 +75,7 @@ if __name__ == "__main__":
     print len(missing_files)
     print missing_files
 
-    corrupted_files = check_hdf5(directory, data_files, postfix)
-    print 'Following files are corrupted ...'
-    print len(corrupted_files)
-    print corrupted_files
+    # corrupted_files = check_hdf5(directory, data_files, postfix)
+    # print 'Following files are corrupted ...'
+    # print len(corrupted_files)
+    # print corrupted_files
