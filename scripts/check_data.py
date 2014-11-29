@@ -14,10 +14,10 @@ def check_hdf5(file_path, data_files, postfix=""):
         try:
             check_file = h5py.File(file_path+'/'+file_n, 'r')
             if check_file.keys() == {}:
-                corrupted_files.append(re.sub(postfix + '.h5$', '', re.sub('^.*/', '', file)))
+                corrupted_files.append(re.sub('%s.h5$' % postfix, '', re.sub('^.*/', '', file)))
             check_file.close()
         except:
-            corrupted_files.append(re.sub(postfix + '.h5$', '', re.sub('^.*/', '', file)))
+            corrupted_files.append(re.sub('%s.h5$' % postfix, '', re.sub('^.*/', '', file)))
 
     # In a very bad case we might have 2 same entries in the list of corrupted files ...
     # As we have to check the file anyway we don't care ...
