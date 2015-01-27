@@ -32,7 +32,7 @@ def rebin(a, *args):
     shape = a.shape
     lenShape = len(shape)
     factor = np.asarray(shape) / np.asarray(args)
-    print factor
+    #print factor
     evList = ['a.reshape('] + ['args[%d],factor[%d],' % (i, i) for i in range(lenShape)] + [')'] + ['.mean(%d)' % (i + 1) for i in range(lenShape)]
     return eval(''.join(evList))
 
@@ -74,17 +74,17 @@ def per_pixel_correction(data, thr, chk_size=100):
             result = cython_utils.per_pixel_correction_cython(data_chk, thr)
         else:
             result += cython_utils.per_pixel_correction_cython(data_chk, thr)
-    print result.shape
+    #print result.shape
     return result / tot
 
 
 def per_pixel_correction_sacla(h5_dst, tags_list, thr):
     first_tag = 0
     for t in h5_dst.keys():
-        print t[0:4]
+        #print t[0:4]
         if t[0:4] == "tag_":
             first_tag = int(t[4:])
-            print first_tag
+            #print first_tag
             break
 
     return cython_utils.per_pixel_correction_sacla(h5_dst=h5_dst, tags_list=tags_list, thr=thr, first_tag=first_tag)
@@ -119,10 +119,10 @@ def get_energy_from_theta(thetaPosition):
 def get_spectrum_sacla(h5_dst, tags_list, corr=None, roi=[], masks=[], thr=-9999):
     first_tag = 0
     for t in h5_dst.keys():
-        print t[0:4]
+        #print t[0:4]
         if t[0:4] == "tag_":
             first_tag = int(t[4:])
-            print first_tag
+            #print first_tag
             break
 
     return cython_utils.get_spectrum_sacla(h5_dst, tags_list, first_tag, corr=corr, roi=roi, masks=masks, thr=thr)

@@ -9,7 +9,8 @@ from math import asin, sin, pi
 # loading some utils
 sys.path.append(os.environ["PWD"] + "/../")
 from utilities import beamtime_converter_201411XX as btc
-from anbox import analysis_loader
+#from anbox import analysis_loader
+import create_spectra
 # from utilities.analysis import rebin
 
 IOlow = "/event_info/bl_3/eh_4/photodiode/photodiode_I0_lower_user_7_in_volt"
@@ -24,15 +25,15 @@ if __name__ == "__main__":
     is_roi = True  # is a ROI'd file?
     thr = 70  # APU counting threshold
 
-    print fname, fname.find("roi")
+    #print fname, fname.find("roi")
     if fname.find("roi") == -1:
         is_roi = False
 
     run = fname.split("/")[-1].replace("_roi", "").replace(".h5", "")
 
     f = h5py.File(fname, "r")
-    print f["/run_" + run + "/"].keys()
-    print f.keys()
+    #print f["/run_" + run + "/"].keys()
+    #print f.keys()
 
     tag_list = f["/run_" + run + "/event_info/tag_number_list"][:]
     is_laser = f["/run_" + run + "/event_info/bl_3/lh_1/laser_pulse_selector_status"][:]
@@ -89,7 +90,8 @@ if __name__ == "__main__":
     plugin_conf = {}
     for i in range(0, 2):
         plugin_conf['create_spectra'] = {"roi": [[0, 1024], [325, 335]]}
-        algo = analysis_loader.load("create_spectra")
+        #algo = analysis_loader.load("create_spectra")
+        algo = create_spectra.CreateSpectraPumpProbe()
         algo.tags_list = tags
         algo.dst_name = "/run_" + run + "/detector_2d_" + str(i + 1) + "/"
         algo.fname = fname
