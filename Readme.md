@@ -38,6 +38,8 @@ it will plots:
 - if on a normal file, average of threholded images, plus laser on - laser off spectra
 - if on a ROI'd file, as above, plus original averaged dark subtracted image
 
+You can also use the `get_pump_probe.py`, which is an improved multiprocessing version.
+
 ## Plot monodimensional quantities vs scans
 
 Plot only one scan, e.g.: 
