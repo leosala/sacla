@@ -1,6 +1,7 @@
 """
 Simple analysis for XAS data. It applies a filter to data, and plot absorption in 
-function of a scan parameter (energy, delay, etc)
+function of a scan parameter (energy, delay, etc). It also plots some control
+quantities, e.g. photon energy and I0
 """
 
 import matplotlib.pyplot as plt
@@ -11,6 +12,7 @@ from os import environ
 from sys import path
 # loading some utils
 path.append(environ["PWD"] + "/../")
+# contains some useful conversions, which can vary from beamtime to beamtime
 from utilities import beamtime_converter_201411XX as btc
 
 
@@ -22,8 +24,9 @@ Mono = "/event_info/bl_3/tc/mono_1_position_theta"
 Delay = "/event_info/bl_3/eh_4/laser/delay_line_motor_29"
 ND = "/event_info/bl_3/eh_4/laser/nd_filter_motor_26"
 
-
-dir = "/work/timbvd/hdf5/"
+# directory containing HDF5 files
+# dir = "/work/timbvd/hdf5/"
+dir = "/home/sala/Work/Data/Sacla/"
 
 
 def compute_xas(scan_type, start_run, end_run, t0=0):
@@ -41,7 +44,8 @@ def compute_xas(scan_type, start_run, end_run, t0=0):
     index_name = scan_type
 
     for i in range(int(start_run), int(end_run) + 1):
-        fname = dir + str(i) + "_nompccd.h5"
+        # fname = dir + str(i) + "_nompccd.h5"
+        fname = dir + str(i) + "_roi.h5"
         run = fname.split("/")[-1].replace("_roi", "").replace(".h5", "").replace("_nompccd", "")
 
         try:

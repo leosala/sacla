@@ -1,40 +1,22 @@
+"""
+It just calls compute_xas many times, compute some stats, and plot
+"""
 
-from plot_xas import compute_xas
+from plot_scan import compute_xas
 import matplotlib.pyplot as plt
-import pandas as pd
+# import pandas as pd
 import numpy as np
 
 labels = []
-### Various run ranges
-# EXAFS: 
-#     [259001, 259038], [259038, 259057], [259058, 259075], [259076, 259095], [259096, 259113], [259114, 259132],  [259133, 259152], [259153, 259170], [259171, 259190], [259191, 259208],[259209, 259228]
-# t0 checks:
-#    [257702, 257783],
-#    [258125, 258201],
-#    [258202, 258278],
-##    [258607, 258634],
-#    [258712, 258736],
-#    [259229, 259400]
-# 258279 (5 ps), 258331 (10 ps) and 258385 (50 ps) 258554 (5 ps)
 
-# Chris check
-#    [258279, 258330], [258331, 258385], [258386, 258439], [258554, 258606]
-#labels = ["5 ps", "10 ps", "50 ps", "5 ps"]
 
-### Can be delay, energy
+# Can be delay, energy
 scan_type = "energy"
 run_list = [
-#    [257702, 257783],
-#   [258125, 258201],
-#   [258202, 258278],
-##    [258607, 258634],
-#    [258712, 258736],
-#    [259229, 259286],
-#    [259305, 259376],
     [259379, 259428],
     [259429, 259482],
     [259483, 259500],
-    ]
+]
 
 labels = ["2 ps", "1 ps", "2 ps"]
 fig = plt.figure(figsize=(20, 15))
