@@ -1,6 +1,7 @@
 """
 
 Simple tool to convert SACLA hdf5 files into more analysis-friendly hdf5 files.
+It also adds information gathered using syncdaq_get
 
 """
 
@@ -30,10 +31,9 @@ RUN_INFO_DST = ["event_info", "exp_info", "run_info"]
 TAG_DST = "tag"
 
 
-#@profile
 def convert_sacla_file(f, fout, compress=""):
     """
-    Converts SACLA data format in an analysis-friendly format
+    Converts SACLA data format in an analysis-friendly format (single dataset)
     """
 
     file_info = f["file_info"]
@@ -145,9 +145,11 @@ if __name__ == "__main__":
     #add_files_dir = "/home/sala/Work/Data/Sacla/DAQ/timbvd/"
     add_files_dir = "/media/sala/Elements/Data/Sacla/DAQ/timbvd/"
 
+    # this step can be avoided, if you want to keep original SACLA data file structure
     convert_sacla_file(f, fout)
     #convert_sacla_file(f, fout, compress="lzf")
 
+    # Add information from syncdaq_get into the HDF5 file produced by DataConvert3
     daq_info = {}
     daq_info["delay"] = {"fname": "Delays.txt", "units": "ps"}
     daq_info["energy"] = {"fname": "Mono.txt", "units": "eV"}
@@ -158,7 +160,7 @@ if __name__ == "__main__":
     daq_info["bl2_I0mon_down"] = {"fname": "X2Up.txt", "units": "V"}
     daq_info["bl2_I0mon_right"] = {"fname": "X2Right.txt", "units": "V"}
     daq_info["bl2_I0mon_left"] = {"fname": "X2Left.txt", "units": "V"}
-    daq _info["bl3_apd"] = {"fname": "APD.txt", "units": "V"}
+    daq_info["bl3_apd"] = {"fname": "APD.txt", "units": "V"}
     daq_info["johann_theta"] = {"fname": "Johann.txt", "units": "pulse"}
 
     run_list = []
@@ -182,6 +184,6 @@ if __name__ == "__main__":
             tags_dset.attrs["units"] = np.string_(v["units"])
             # do a write here???
             fout.flush()
-            
+
     f.close()
     fout.close()

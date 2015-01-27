@@ -4,6 +4,12 @@ This repository holds all the scripts and ipython notebooks used for the Novembe
 Before using go to utilities folder and execute `compile_cython.sh` to compile the cython code!
 
 # Examples
+## Adding DAQ information to DataConvert3 hdf5 files
+
+`cd scripts && python convert_sacla_hdf5.py infile.h5 outfile.h5`
+
+Please check the source code, as some parameters are hardcoded. Also, this script can be used to convert SACLA data files into having contiguous datasets (compared to one-image-per-tag datasets): please check the code.
+
 ## Running the DataConvert4 automatic converter:
 `./get_data.py -l -d <runnumber>`
 
