@@ -1,7 +1,9 @@
 # Overview
-This repository holds all the scripts and ipython notebooks used for the November SACLA beamtime ...
+This repository holds all the scripts and ipython notebooks used for the PSI November SACLA beamtime ...
 
 Before using go to utilities folder and execute `compile_cython.sh` to compile the cython code!
+
+**Code is provided without any guarantee**
 
 # Examples
 ## Adding DAQ information to DataConvert3 hdf5 files
