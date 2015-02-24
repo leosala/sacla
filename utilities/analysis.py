@@ -3,28 +3,6 @@ import math
 import cython_utils
 
 
-def print_leaf(f, leaf_name, level=99, init_level=0):
-    """
-    Print iteratively leafs of an HDF5 file
-    """
-    try:
-        new_leafs = f[leaf_name].keys()
-        init_level += 1
-        for k in new_leafs:
-            if level >= init_level:
-                print_leaf(f, leaf_name + "/" + k, level, init_level)
-            else:
-                print leaf_name + "/" + k
-    except:
-        try:
-            if f[leaf_name].shape[0] > 10:
-                print leaf_name, f[leaf_name].shape
-            else:
-                print leaf_name, f[leaf_name].value
-        except:
-                print leaf_name, f[leaf_name].value
-
-
 def rebin(a, *args):
     """
     rebin a numpy array
@@ -117,6 +95,17 @@ def get_energy_from_theta(thetaPosition):
 
 
 def get_spectrum_sacla(h5_dst, tags_list, corr=None, roi=[], masks=[], thr=-9999):
+    """
+    Loops over SACLA standard HDF5 file, and extracts spectra of images over the Y region. It returns the sum of all the images, and the spectrum obtained. If the mask input is a list of boolean masks, then a list of [sum_of_images, spectrum] is returned.
+
+    :param h5_dst: the HDF5 dataset containing the detector tags, e.g /run_00000/detector_2d_9
+    :param tags_list: the list of tags to analyze
+    :param corr: per image correction to be applied (tipically a dark image)
+    :param masks: a list of selections to apply. Example: [laser_on, laser_off], where laser_on is a boolean mask with the same lenght of tags_list
+    :param thr: lower threshold to apply when creating the spectrum and the sum of images, (ADU > thr)
+
+    :returns: sum_of_images, spectrum 
+    """
     first_tag = 0
     for t in h5_dst.keys():
         #print t[0:4]
@@ -126,6 +115,30 @@ def get_spectrum_sacla(h5_dst, tags_list, corr=None, roi=[], masks=[], thr=-9999
             break
 
     return cython_utils.get_spectrum_sacla(h5_dst, tags_list, first_tag, corr=corr, roi=roi, masks=masks, thr=thr)
+
+
+def get_spectra_sacla(h5_dst, tags_list, corr=None, roi=[], masks=[], thr=-9999):
+    first_tag = 0
+    for t in h5_dst.keys():
+        #print t[0:4]
+        if t[0:4] == "tag_":
+            first_tag = int(t[4:])
+            #print first_tag
+            break
+
+    return cython_utils.get_spectra_sacla(h5_dst, tags_list, first_tag, corr=corr, roi=roi, masks=masks, thr=thr)
+
+
+def run_on_images_sacla(func, h5_dst, tags_list, corr=None, roi=[], masks=[], thr=-9999):
+    first_tag = 0
+    for t in h5_dst.keys():
+        #print t[0:4]
+        if t[0:4] == "tag_":
+            first_tag = int(t[4:])
+            #print first_tag
+            break
+
+    return cython_utils.run_on_images(func, h5_dst, tags_list, first_tag, corr=corr, roi=roi, masks=masks, thr=thr)
 
 
 def get_spectrum(data, f="sum", corr=None, chk_size=200, roi=None, masks=[]):

@@ -3,7 +3,7 @@ import numpy as np
 # 'xfel_bl_3_st3_motor_25/position'; 'Delays';
 
 NAN = np.nan
-
+INF = np.inf
 
 def dataset_name(name):
     """"""
@@ -23,6 +23,9 @@ def get_generic(value):
 
     if value.find("not-converged") != -1:
         return NAN
+    if value.find("saturated") != -1:
+        return INF
+
     units = ["V", "pulse"]
     for u in units:
         if value.find(u) != -1:

@@ -26,7 +26,7 @@ ND = "/event_info/bl_3/eh_4/laser/nd_filter_motor_26"
 
 # directory containing HDF5 files
 # dir = "/work/timbvd/hdf5/"
-dir = "/home/sala/Work/Data/Sacla/"
+dir = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/"
 
 
 def compute_xas(scan_type, start_run, end_run, t0=0):
