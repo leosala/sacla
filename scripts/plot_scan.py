@@ -111,11 +111,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("-o", "--outputdir", help="output directory", action="store", default=".")
-    parser.add_argument("-p", "--plot", help="plot, do not save", action="store_true")
+    #parser.add_argument("-p", "--plot", help="plot, do not save", action="store_true")
     parser.add_argument("-s", "--start_run", help="start_run", action="store", default="1")
     parser.add_argument("-e", "--end_run", help="end_run", action="store", default="9999999")
     parser.add_argument("-t", "--scan_type", help="scan type, e.g. energy, delay, ND", action="store", default="energy")
     parser.add_argument("-c", "--check", help="plot check quantities (photon energy etc)", action="store_true", default=False)
+    parser.add_argument("-a", "--asciifile", help="Prefix of the destination file for dumping plot points in ASCII (tab-separated) files, one per dataset. The files will be called e.g. <asciifile>_laser_on.txt, etc. Default: do not dump", action="store", default="")
 
     args = parser.parse_args()
 
@@ -147,6 +148,22 @@ if __name__ == "__main__":
 
     a2.fill_between(df_diff.index.tolist(), (df_diff - df_diff_std)["absorp"].values.tolist(), (df_diff + df_diff_std)["absorp"].values.tolist(), alpha=0.8, edgecolor='#999999', facecolor='#999999')
     plt.legend(title="", loc="best")
+
+    if args.asciifile != "":
+        df_on["absorp_std"] = df_on_std["absorp"]
+        df_on = df_on.sort(axis=1)
+        df_on["absorp_std"] = df_on_std["absorp"]
+        df_off = df_off.sort(axis=1)
+        df_diff2 = (df_on - df_off)
+        df_diff2["absorp_std"] = df_diff_std["absorp"]
+        df_diff2 = df_diff2.sort(axis=1)
+       
+        df_on.to_csv(args.asciifile + "_laser_on.txt", index=True, sep='\t', header=True, )
+        df_off.to_csv(args.asciifile + "_laser_off.txt", index=True, sep='\t', header=True, )
+        df_diff2.to_csv(args.asciifile + "_on_minus_off.txt", index=True, sep='\t', header=True, )
+
+
+#index_label=None, mode='w', nanRep=None, encoding=None, date_format=None)
 
     # an example of how to plot reference data contained in ASCII file
     """
