@@ -9,6 +9,7 @@ import pandas as pd
 import h5py
 import numpy as np
 from os import environ
+import os
 from sys import path
 # loading some utils
 path.append(environ["PWD"] + "/../")
@@ -158,9 +159,9 @@ if __name__ == "__main__":
         df_diff2["absorp_std"] = df_diff_std["absorp"]
         df_diff2 = df_diff2.sort(axis=1)
        
-        df_on.to_csv(args.asciifile + "_laser_on.txt", index=True, sep='\t', header=True, )
-        df_off.to_csv(args.asciifile + "_laser_off.txt", index=True, sep='\t', header=True, )
-        df_diff2.to_csv(args.asciifile + "_on_minus_off.txt", index=True, sep='\t', header=True, )
+        df_on.to_csv(os.path.join(args.outputdir, args.asciifile + "_laser_on.txt"), index=True, sep='\t', header=True, )
+        df_off.to_csv(os.path.join(args.outputdir, args.asciifile + "_laser_off.txt"), index=True, sep='\t', header=True, )
+        df_diff2.to_csv(os.path.join(args.outputdir, args.asciifile + "_on_minus_off.txt"), index=True, sep='\t', header=True, )
 
 
 #index_label=None, mode='w', nanRep=None, encoding=None, date_format=None)
