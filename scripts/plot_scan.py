@@ -111,13 +111,15 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-o", "--outputdir", help="output directory", action="store", default=".")
-    #parser.add_argument("-p", "--plot", help="plot, do not save", action="store_true")
+    parser.add_argument("-d", "--outputdir", help="output directory", action="store", default=".")
+    parser.add_argument("-l", "--label", help="prefix label for image, ASCII output. Default: test", action="store", default="test")
+
+    parser.add_argument("-n", "--noplot", help="do not plot", action="store_true", default=False)
     parser.add_argument("-s", "--start_run", help="start_run", action="store", default="1")
     parser.add_argument("-e", "--end_run", help="end_run", action="store", default="9999999")
     parser.add_argument("-t", "--scan_type", help="scan type, e.g. energy, delay, ND", action="store", default="energy")
     parser.add_argument("-c", "--check", help="plot check quantities (photon energy etc)", action="store_true", default=False)
-    parser.add_argument("-a", "--asciifile", help="Prefix of the destination file for dumping plot points in ASCII (tab-separated) files, one per dataset. The files will be called e.g. <asciifile>_laser_on.txt, etc. Default: do not dump", action="store", default="")
+    parser.add_argument("-a", "--asciifile", help="Dump plot points in ASCII (tab-separated) files, one per dataset. The files will be called e.g. <label>_laser_on.txt, etc. Default: do not dump", action="store_true", default="")
 
     args = parser.parse_args()
 
@@ -128,14 +130,29 @@ if __name__ == "__main__":
     if args.check:
         df_conds.plot(subplots=True, linestyle="", marker=".", figsize=(10, 10))
 
+    df_laser_on = df[df["laser"] == 1]
+    df_laser_off = df[df["laser"] == 0]
+
+    df_counts_on = df_laser_on.groupby(level='energy').count()["ND"]
+    df_counts_off = df_laser_off.groupby(level='energy').count()["ND"]
+    
     # get averages
-    df_on = df[df["laser"] == 1].mean(level=0)
-    df_off = df[df["laser"] == 0].mean(level=0)
-    df_diff = 10 * (df_on - df_off)
+    df_on = df_laser_on.mean(level=0)
+    df_off = df_laser_off.mean(level=0)
+    df_diff = (df_on - df_off)
+    # adding number of events
+    df_on["events"] = df_counts_on.values
+    df_off["events"] = df_counts_off.values
+
     # get std_dev
-    df_on_std = df[df["laser"] == 1].std(level=0)
-    df_off_std = df[df["laser"] == 0].std(level=0)
+    df_on_std = df_laser_on.std(level=0)
+    df_off_std = df_laser_off.std(level=0)
     df_diff_std = np.sqrt((df_on_std) * (df_on_std) + (df_off_std) * (df_off_std))
+
+    # std error
+    df_on["absorp_stderr"] = df_laser_on["absorp"].sem(level='energy')
+    df_off["absorp_stderr"] = df_laser_off["absorp"].sem(level='energy')
+    df_diff["absorp_stderr"] = np.sqrt((df_on["absorp_stderr"]) ** 2 + (df_off["absorp_stderr"]) ** 2)
 
     # plot
     fig = plt.figure(figsize=(20, 15))
@@ -150,21 +167,21 @@ if __name__ == "__main__":
     a2.fill_between(df_diff.index.tolist(), (df_diff - df_diff_std)["absorp"].values.tolist(), (df_diff + df_diff_std)["absorp"].values.tolist(), alpha=0.8, edgecolor='#999999', facecolor='#999999')
     plt.legend(title="", loc="best")
 
-    if args.asciifile != "":
+    if args.asciifile:
+        # add std dev to dataframe
         df_on["absorp_std"] = df_on_std["absorp"]
+        df_off["absorp_std"] = df_off_std["absorp"]
+        df_diff["absorp_std"] = df_diff_std["absorp"]
+        
+        # sorting
         df_on = df_on.sort(axis=1)
-        df_on["absorp_std"] = df_on_std["absorp"]
         df_off = df_off.sort(axis=1)
-        df_diff2 = (df_on - df_off)
-        df_diff2["absorp_std"] = df_diff_std["absorp"]
         df_diff2 = df_diff2.sort(axis=1)
-       
-        df_on.to_csv(os.path.join(args.outputdir, args.asciifile + "_laser_on.txt"), index=True, sep='\t', header=True, )
-        df_off.to_csv(os.path.join(args.outputdir, args.asciifile + "_laser_off.txt"), index=True, sep='\t', header=True, )
-        df_diff2.to_csv(os.path.join(args.outputdir, args.asciifile + "_on_minus_off.txt"), index=True, sep='\t', header=True, )
+        
+        df_on.to_csv(os.path.join(args.outputdir, args.label + "_laser_on.txt"), index=True, sep='\t', header=True, )
+        df_off.to_csv(os.path.join(args.outputdir, args.label + "_laser_off.txt"), index=True, sep='\t', header=True, )
+        df_diff2.to_csv(os.path.join(args.outputdir, args.label + "_on_minus_off.txt"), index=True, sep='\t', header=True, )
 
-
-#index_label=None, mode='w', nanRep=None, encoding=None, date_format=None)
 
     # an example of how to plot reference data contained in ASCII file
     """
@@ -182,4 +199,6 @@ if __name__ == "__main__":
     plt.legend(title="delay = %d ps" % 2, loc="best")
     """
 
-    plt.show()
+    plt.savefig(args.label + ".png")
+    if not args.noplot:
+        plt.show()
