@@ -176,11 +176,11 @@ if __name__ == "__main__":
         # sorting
         df_on = df_on.sort(axis=1)
         df_off = df_off.sort(axis=1)
-        df_diff2 = df_diff2.sort(axis=1)
+        df_diff = df_diff.sort(axis=1)
         
         df_on.to_csv(os.path.join(args.outputdir, args.label + "_laser_on.txt"), index=True, sep='\t', header=True, )
         df_off.to_csv(os.path.join(args.outputdir, args.label + "_laser_off.txt"), index=True, sep='\t', header=True, )
-        df_diff2.to_csv(os.path.join(args.outputdir, args.label + "_on_minus_off.txt"), index=True, sep='\t', header=True, )
+        df_diff.to_csv(os.path.join(args.outputdir, args.label + "_on_minus_off.txt"), index=True, sep='\t', header=True, )
 
 
     # an example of how to plot reference data contained in ASCII file
