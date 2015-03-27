@@ -72,15 +72,17 @@ def search_hdf5(hdf5_group, regexp, print_elems=0):
     :param regexp:
     :param print_elems: print the first X elements, default:0
     """
-    res = []
     #import re
     #rule = re.compile(regexp)
     def visit_f(name, object):
         if name.find(regexp) != -1:
             if print_elems == 0:
-                print name, object.dtype, object.shape
+                if isinstance(object, h5py.Dataset):
+                    print name, object.dtype, object.shape
             else:
-                print name, object.dtype, object.shape, object[:print_elems]
+                if isinstance(object, h5py.Dataset):
+                    print name, object.dtype, object.shape, object[:print_elems]
+
     hdf5_group.visititems(visit_f)
 
 
@@ -92,6 +94,7 @@ def print_leaf(f, leaf_name="/", level=0, init_level=0):
     :param level: Recursiveness level
     :param init_level:
     """
+
     try:
         new_leafs = f[leaf_name].keys()
         init_level += 1
@@ -99,7 +102,7 @@ def print_leaf(f, leaf_name="/", level=0, init_level=0):
             if level >= init_level:
                 print_leaf(f, leaf_name + "/" + k, level, init_level)
             else:
-                print leaf_name + "/" + k
+                print (leaf_name + "/" + k).replace("//", "/")
     except:
         try:
             if f[leaf_name].shape[0] > 10:
