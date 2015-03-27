@@ -167,14 +167,22 @@ if __name__ == "__main__":
     daq_info["delay"] = {"fname": "Delays.txt", "units": "ps"}
     daq_info["energy"] = {"fname": "Mono.txt", "units": "eV"}
     daq_info["x_shut"] = {"fname": "Xshut.txt", "units": "bool"}
-    daq_info["x_stat"] = {"fname": "Xstat.txt", "units": "bool"}
+    daq_info["x_status"] = {"fname": "Xstat.txt", "units": "bool"}
     daq_info["laser_on"] = {"fname": "LaserOn.txt", "units": "bool"}
     daq_info["bl2_I0mon_up"] = {"fname": "X2Up.txt", "units": "V"}
-    daq_info["bl2_I0mon_down"] = {"fname": "X2Up.txt", "units": "V"}
+    daq_info["bl2_I0mon_down"] = {"fname": "X2Down.txt", "units": "V"}
     daq_info["bl2_I0mon_right"] = {"fname": "X2Right.txt", "units": "V"}
     daq_info["bl2_I0mon_left"] = {"fname": "X2Left.txt", "units": "V"}
-    daq_info["bl3_apd"] = {"fname": "APD.txt", "units": "V"}
+    daq_info["johann_apd"] = {"fname": "APD.txt", "units": "V"}
     daq_info["johann_theta"] = {"fname": "Johann.txt", "units": "pulse"}
+    daq_info["johann_trans"] = {"fname": "APD_trans.txt", "units": "V"}
+
+    daq_info["Trans_PD2"] = {"fname": "PD.txt", "units": "V"}
+    daq_info["TFY_PD9"] = {"fname": "PD9.txt", "units": "V"}
+    daq_info["I0up_PD3"] = {"fname": "X41.txt", "units": "V"}
+    daq_info["I0down_PD4"] = {"fname": "X42.txt", "units": "V"}
+    daq_info["laserpos_h_M27"] = {"fname": "M27.txt", "units": "pulse"}
+    daq_info["laserpos_v_M28"] = {"fname": "M28.txt", "units": "pulse"}
 
     run_list = []
     for k in f.keys():

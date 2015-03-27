@@ -1,6 +1,10 @@
 import numpy as np
 import math
 import cython_utils
+from time import time
+import sys
+import os
+import h5py
 
 
 def rebin(a, *args):
@@ -56,7 +60,7 @@ def per_pixel_correction(data, thr, chk_size=100):
     return result / tot
 
 
-def per_pixel_correction_sacla(h5_dst, tags_list, thr):
+def per_pixel_correction_sacla(h5_dst, tags_list, thr, get_std=False):
     first_tag = 0
     for t in h5_dst.keys():
         #print t[0:4]
@@ -65,7 +69,8 @@ def per_pixel_correction_sacla(h5_dst, tags_list, thr):
             #print first_tag
             break
 
-    return cython_utils.per_pixel_correction_sacla(h5_dst=h5_dst, tags_list=tags_list, thr=thr, first_tag=first_tag)
+    # the astype is needed because the tags can be int32 or in64, depending on the data
+    return cython_utils.per_pixel_correction_sacla(h5_dst=h5_dst, tags_list=tags_list.astype(np.int64), thr=thr, first_tag=first_tag, get_std=get_std)
 
 
 #def per_pixel_correction(data, thr):
@@ -195,3 +200,173 @@ def get_spectrum(data, f="sum", corr=None, chk_size=200, roi=None, masks=[]):
         return spectra[0]
     else:
         return spectra
+
+
+#@profile
+def loop_on_images(f, tags_list, dset_name, corr=None, roi=[], spectra_axis=0, create_histos=True, adu_thr=None):
+    # variables declaration
+    sum_of_counts = []
+    spectra = []
+    histo = None
+    bins = None
+    image_sum = None 
+    spectra_none = []
+    
+    for i, t in enumerate(tags_list):
+        try:
+            image = f[dset_name + "/tag_" + str(t) + "/detector_data"][:]
+        except:
+            spectra.append(np.nan)
+            spectra_none.append(i)
+            #sum_of_counts.append(0)
+            continue
+        # applying corrections
+        if corr is not None:
+            image -= corr
+
+        # setup ROI
+        if roi != []:
+            image_roi = image[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
+        else:
+            image_roi = image
+
+        # from: https://gist.github.com/nkeim/4455635
+        if create_histos:
+            bins = np.arange(-100, 1000, 5)
+            t_histo = np.bincount(np.digitize(image_roi.flatten(), bins[1:-1]), minlength=len(bins) - 1)
+            # this is very expensive...
+            #t_histo, bins = np.histogram(image_roi, bins=range(-100, 1000, 5))
+
+            if histo is None:
+                histo = t_histo
+            else:
+                histo += t_histo
+
+        if adu_thr is not None:
+            image[image < adu_thr] = 0  # np.ma.masked_where(image_t < adu_thr, image_t)
+            image_roi[image_roi < adu_thr] = 0
+            
+        # sum of images
+        if image_sum is None:
+            image_sum = image
+        else:
+            image_sum += image
+            
+        sum_of_counts.append(image_roi.sum())
+        spectra.append(image_roi.sum(axis=spectra_axis))
+
+        if corr is None:
+            continue
+
+    # correct spectra array for missing tags
+    spectra_shape = None
+    for i, x in enumerate(spectra):
+        if i not in spectra_none:
+            spectra_shape = x.shape
+            break
+    for i in spectra_none:
+        #spectra[i] = np.nan * np.zeros(spectra_shape)
+        spectra[i] = np.zeros(spectra_shape)
+    # remove nans
+    spectra = np.array(spectra, dtype=spectra[i].dtype)
+    spectra[np.isnan(spectra)] = 0
+    return np.array(sum_of_counts, dtype=type(sum_of_counts[0])), histo, bins, image_sum, spectra
+
+
+#@profile
+def get_spectra_from_2D(fname, roi=[], adu_thr=None, corr=False, corr_thr=0., detectors=["detector_2d_1"], spectra_axis=0):
+    """
+    Get spectra and other useful information from SACLA data files.
+
+    :param fname: hdf5 filename
+    :param roi: ROI, as a list, e.g. [[0, 512], [10, 20]]. If a ROI per detector is to be used, it should be a list of lists, in the same order as detectors list. Default: []
+    :param adu_thr: lower threshold for ADU counts (not used for spectra and histo computations)
+    :param corr: create a Dark correction from this file, using an upper threshold corr_thr. If it is an array, then this array is subtracted to each image
+    :param corr_thr: threshold for dark correction computation
+    :param detectors: list of 2D detectors to be used in the computation. Default: ["detector_2d_1"]
+
+    :return: a dictionary of results, plus everything contained in the "daq_info/" dataset if available
+    """
+    results = {}
+    t0 = time()
+    try:
+        f = h5py.File(fname)
+        run = f.keys()[-1]
+        tags = f[run + "/event_info/tag_number_list"].value
+    except:
+        print sys.exc_info()
+        return {"elapsed_time": -1, "events_s": -1, "source_filename": ""}
+
+
+    # detectors loop
+    for di, detector in enumerate(detectors):
+        dset_name = ""
+        if detector in f[run].keys():
+            dset_name = run + "/" + detector
+        else:
+            # return a meaningful dict if no images are found
+            return {"elapsed_time": -1, "events_s": -1, "source_filename": fname, "run": int(run.replace("run_", ""))}
+
+        # getting the list of tags with images
+        tags_list = f[dset_name].keys()[1:]
+        # from text to ints
+        image_tags_list = [ int(x.replace("tag_", "")) for x in tags_list if x[0:3] == "tag"]
+
+        # getting the spectra
+        correction = None
+        correction_std = None
+        if corr is True:
+            correction, correction_std = per_pixel_correction_sacla(f[dset_name + "/"], tags, thr=corr_thr, get_std=True)
+        elif isinstance(corr, list):
+            correction = corr[di]
+
+        adu_thr2 = adu_thr
+        if isinstance(adu_thr, list):
+            adu_thr2 = adu_thr[di]
+
+        roi_t = roi
+        if len(np.array(roi).shape) == 3:
+            roi_t = roi[di]
+        
+        sum_of_counts, histo, bins, sum_images_noroi, spectra = loop_on_images(f, tags, dset_name, corr=correction, roi=roi_t, spectra_axis=spectra_axis, adu_thr=adu_thr2)
+
+        roi_mask = np.zeros(sum_images_noroi.shape, dtype=int)
+        if roi != []:
+            #if len(roi) == 2:
+            roi_mask[roi_t[0][0]:roi_t[0][1], roi_t[1][0]:roi_t[1][1]] = 1
+            #elif len(roi) == 3:
+            #    roi_mask[roi[di][0][0]:roi[di][0][1], roi[di][1][0]:roi[di][1][1]] = 1
+            #else:
+            #    print "[ERROR] Wrong ROI dimension %d, please check" % len(roi)
+            #    return {"elapsed_time": -1, "events_s": -1, "source_filename": fname, "run": int(run.replace("run_", ""))}
+        else:
+            roi_mask[:] = 1
+
+
+        results[detector + "-images_sum"] = sum_of_counts
+        results[detector + "-roi_mask"] = roi_mask
+        results[detector + "-sum_image_noroi"] = sum_images_noroi
+        results[detector + "-spectra"] = spectra
+        results[detector + "-adu_histo"] = histo
+        results[detector + "-adu_bins"] = bins
+        results[detector + "-dark_corr"] = correction
+        results[detector + "-dark_corr_std"] = correction_std
+
+    
+    tags_mask = [np.in1d(tags, image_tags_list)]
+
+    #if prefix in 
+    #for k, v in f[prefix].iteritems():
+    #    tmp_a = v[:][tags_mask]
+    #    results[k] = v[:][tags_mask]#np.ndarray(tmp_a.shape, )
+    #    #results[k] = tmp_a
+
+        
+    te = time() - t0
+    results["run"] = int(run.replace("run_", ""))
+    results["tags"] = np.array(image_tags_list)
+    results["elapsed_time"] = te
+    results["events_s"] = len(image_tags_list) / te
+    results["is_laser"] = f[run + "/event_info/bl_3/lh_1/laser_pulse_selector_status"][:]
+    results["source_filename"] = fname
+    return results

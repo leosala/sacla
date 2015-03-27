@@ -42,7 +42,7 @@ def per_pixel_correction_cython(np.ndarray[DTYPE_t, ndim=3] data, float thr):
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE4_t, ndim=1] tags_list, int thr, int first_tag):
+def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE4_t, ndim=1] tags_list, int thr, int first_tag, bool get_std=False):
 
     cdef int x = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[0]
     cdef int y = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[1]
@@ -50,6 +50,7 @@ def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE4_t, ndim=1] tags_list, i
     cdef int tot = tags_list.shape[0]
     cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([x, y], dtype=DTYPE)
     cdef np.ndarray[DTYPE_t, ndim = 2] data = np.zeros([x, y], dtype=DTYPE)
+    cdef np.ndarray[DTYPE_t, ndim = 2] std_dev = np.zeros([x, y], dtype=DTYPE)
 
     for t in tags_list:
         try:
@@ -58,10 +59,60 @@ def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE4_t, ndim=1] tags_list, i
                 for j in xrange(0, y):
                     if data[i, j] < thr:
                         corr_data[i, j] += data[i, j] / tot
+                    if get_std:
+                        std_dev[i, j] += data[i, j] * data[i, j]   
         except:
             msg = "Tag #%s not found" % t
+    if get_std:
+        for i in xrange(0, x):
+            for j in xrange(0, y):
+                std_dev[i, j] = sqrt(std_dev[i, j] / tot - corr_data[i, j] * corr_data[i, j])
+        #return corr_data, sqrt(std_dev / tot - corr_data * corr_data)
+        return corr_data, std_dev
+    else:
+        return corr_data
 
-    return corr_data
+    #if get_std:
+    #    return corr_data, sqrt(std_dev / tot - corr_data * corr_data)
+    #else:
+    #    return corr_data
+
+
+## @cython.boundscheck(False)
+## @cython.wraparound(False)
+## def per_pixel_correction_sacla(h5_dst, np.ndarray[DTYPE2_t, ndim=1] tags_list, int thr, int first_tag, bool get_std=False):
+
+##     cdef int x = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[0]
+##     cdef int y = h5_dst["tag_" + str(first_tag) + "/detector_data"].shape[1]
+##     cdef int i = 0
+##     cdef int tot = tags_list.shape[0]
+##     cdef np.ndarray[DTYPE_t, ndim = 2] corr_data = np.zeros([x, y], dtype=DTYPE)
+##     cdef np.ndarray[DTYPE_t, ndim = 2] data = np.zeros([x, y], dtype=DTYPE)
+##     cdef np.ndarray[DTYPE_t, ndim = 2] std_dev = np.zeros([x, y], dtype=DTYPE)
+
+##     for t in tags_list:
+##         try:
+##             data = h5_dst["tag_" + str(t) + "/detector_data"][:]
+##             for i in xrange(0, x):
+##                 for j in xrange(0, y):
+##                     if data[i, j] < thr:
+##                         corr_data[i, j] += data[i, j] / tot
+##                         if get_std:
+##                             std_dev[i, j] += data[i, j] * data[i, j]  
+##                             #std_dev[i, j] += (data[i, j] * data[i, j]) / tot
+##                             #tmp[i, j] += (data[i, j] / tot) * (data[i, j] / tot)
+##         except:
+##             msg = "Tag #%s not found" % t
+    
+
+##     if get_std:
+##         #for i in xrange(0, x):
+##         #    for j in xrange(0, y):
+##         #        std_dev[i, j] = sqrt(std_dev[i, j] - corr_data[i, j] * corr_data[i, j])
+##         return corr_data, sqrt(std_dev / tot - corr_data * corr_data)
+##         #return corr_data, std_dev
+##     else:
+##         return corr_data
 
 
 @cython.boundscheck(False)
