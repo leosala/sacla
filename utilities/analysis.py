@@ -1,9 +1,8 @@
 import numpy as np
 import math
-import cython_utils
+import utilities.cython_utils
 from time import time
 import sys
-import os
 import h5py
 
 
@@ -13,7 +12,7 @@ def rebin(a, *args):
     """
     shape = a.shape
     lenShape = len(shape)
-    factor = np.asarray(shape) / np.asarray(args)
+    #factor = np.asarray(shape) / np.asarray(args)
     #print factor
     evList = ['a.reshape('] + ['args[%d],factor[%d],' % (i, i) for i in range(lenShape)] + [')'] + ['.mean(%d)' % (i + 1) for i in range(lenShape)]
     return eval(''.join(evList))
@@ -373,7 +372,7 @@ def get_spectra_from_2D(fname, roi=[], adu_thr=None, corr=False, corr_thr=0., de
 
 
 
-def get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None):
+def image_get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None):
     image = image_in.copy()
  
     if thr_low is not None:
@@ -390,7 +389,7 @@ def get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None):
     return results, temp
 
     
-def get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
+def image_get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
     image = image_in.copy()
     
     if thr_low is not None:
@@ -410,7 +409,7 @@ def get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
     return results, temp    
     
 
-def get_mean_std_results(results, temp):
+def image_get_mean_std_results(results, temp):
     mean = temp["sum"] / temp["current_entry"]
     std = (temp["sum2"] / temp["current_entry"]) - mean * mean
     std = np.sqrt(std)
@@ -419,7 +418,7 @@ def get_mean_std_results(results, temp):
     return results
 
 
-def get_histo(results, temp, image, bins=None):
+def image_get_histo(results, temp, image, bins=None):
     if bins is None:
         bins = np.arange(-100, 1000, 5)
     t_histo = np.bincount(np.digitize(image.flatten(), bins[1:-1]), 
@@ -434,31 +433,54 @@ def get_histo(results, temp, image, bins=None):
     return results, temp                  
   
 
-def get_line_histos(results, temp, image, axis=0, bins=None):
-    if bins is None:
-        bins = np.arange(-100, 1000, 5)
+def image_set_roi(image, roi=None):
+    """
+    Returns a copy of the original image, selected by the ROI region specified
+    
+    :param image: the input array image
+    :param roi: the ROI selection, as [[X_lo, X_hi], [Y_lo, Y_hi]]
+    
+    :return image: a copy of the original image
+    """
+    if roi is not None:
+        new_image = image[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
+        return new_image
+    else:
+        return image
+ 
+ 
+def image_set_thr(image, thr_low=None, thr_hi=None, replacement_value=0):
+    """
+    Apply a low / hi threshold on the image, substituting the thresholded elements with replacement_value
+    """
+    if thr_low is not None:
+        image[image < thr_low] = replacement_value
+    if thr_hi is not None:
+        image[image > thr_hi] = replacement_value
+    return image
 
-    for i in range(image.shape[axis]):
-        if axis == 0:
-            t_histo = np.bincount(np.digitize(image[i, :].flatten(), bins[1:-1]), 
-                          minlength=len(bins) - 1)
-        elif axis == 1:
-            t_histo = np.bincount(np.digitize(image[:, i].flatten(), bins[1:-1]), 
-                          minlength=len(bins) - 1)
 
-        if temp["current_entry"] == 0 and i == 0:
-            results["histos_adu"] = np.empty([image.shape[axis], t_histo.shape[0]], 
-                                                dtype=image.dtype)
-        if temp["current_entry"] == 0:           
-            results["histos_adu"][i] = t_histo
-        else:
-            results["histos_adu"][i] += t_histo
-    temp["current_entry"] += 1
-    return results, temp
+class Analysis(object):
+    """
+    Simple container for the analysis functions to be loaded into AnalysisProcessor. At the moment, it is only
+    used internally inside AnalysisProcessor
+    """
+    def __init__(self, analysis_function, arguments={}, post_analysis_function=None):
+        """
+        :param analysis_function: the main analysis function to be run on images
+        :param arguments: arguments to analysis_function
+        :param post_analysis_function: function to be called only once after the analysis loop
+        """
 
-# guard on fs with same name
-# container for f, res, tmp (internally)
-class AnalysisOnImages(object):
+        self.function = analysis_function
+        self.post_analysis_function = post_analysis_function
+        self.arguments = arguments
+
+        self.temp_arguments = {}
+        self.results = {}
+
+
+class AnalysisProcessor(object):
     """
     Simple class to perform analysis on SACLA datafiles. Due to the peculiar file 
     format in use at SACLA (each image is a single dataset), any kind of
@@ -487,18 +509,18 @@ class AnalysisOnImages(object):
     In order to apply this function to all images, you need to:
     
     # create an AnalysisOnImages object
-    an = AnalysisOnImages()
+    an = AnalysisProcessor()
 
     # load a dataset from a SACLA data file
     hf = h5py.File("/home/sala/Work/Data/Sacla/ZnO/257325.h5") 
     dataset1 = "/run_257325/detector_2d_1/"
-    an.load_sacla_dataset(hf, dataset1)
+    an.add_sacla_dataset(hf, dataset1)
 
     # register the function:    
-    an.load_function(get_spectra, args={'axis': 1})
+    an.add_analysis(get_spectra, args={'axis': 1})
 
     # run the loop
-    results = an.loop_on_images(n=1000)
+    results = an.analyze_images(n=1000)
 
     """
 
@@ -508,43 +530,61 @@ class AnalysisOnImages(object):
         self.functions = {}
         self.datasets = {}    
         self.f_for_all_images = {}
+        self.analyses = []
+        self.available_analyses = {}
+        self.available_analyses["histos_adu"] = (image_get_histo, None)
+        self.available_analyses["mean_std"] = (image_get_mean_std, image_get_mean_std_results)
+        self.available_analyses["spectra"] = (image_get_spectra, None)
+        self.available_preprocess_f = {}
+        self.available_preprocess_f["set_roi"] = image_set_roi
+        self.available_preprocess_f["set_thr"] = image_set_thr
+
     
-    # misleading
-    def apply_to_all_images(self, f, **kwargs):
+    def preprocess_images(self, f, **kwargs):
         """
         Register a function to be applied to all images, before analysis (e.g. dark subtraction)
         """
-        self.f_for_all_images[f.__name__] = {'f': f, "args": kwargs}
+        
+        if isinstance(f, str):
+            if not self.available_preprocess_f.has_key(f):
+                raise RuntimeError("Preprocess function %s not available, please check your code" % f)
+            self.f_for_all_images[f] = {'f': self.available_preprocess_f[f], "args": kwargs}
+        else:
+            self.f_for_all_images[f.__name__] = {'f': f, "args": kwargs}
     
-    def load_function(self, f, result_f=None, args={}):
+    def add_analysis(self, f, result_f=None, args={}):
         """
         Register a function to be run on images
         """
-        if self.functions.has_key(f):
-            raise RuntimeError("Function %s has already been registered, please check your code" %(f.__name__) )
-            
-        self.functions[f.__name__] = {'f': f, 'result_f': result_f, 'args': args, 'results': {}, 'temp': {}}
-        self.results[f.__name__] = {}
-        #self.temp[f.__name__] = {}
+        
+        if isinstance(f, str):
+            if not self.available_analyses.has_key(f):
+                raise RuntimeError("Analysis %s not available, please check your code" % f)
+            analysis = Analysis(self.available_analyses[f][0], arguments=args, 
+                                post_analysis_function=self.available_analyses[f][1])
+        else:
+            analysis = Analysis(f, arguments=args, post_analysis_function=result_f)
+        self.analyses.append(analysis)
+        return analysis.results
 
-    def load_sacla_dataset(self, dataset_file, dataset_name):
+    def add_sacla_dataset(self, dataset_file, dataset_name):
         """
-        Load a SACLA dataset
+        Add a SACLA dataset to the list of datasets to be analyzed
         """
         self.datasets[dataset_name] = {'file': dataset_file}
         # assumption: one run per file
         run = dataset_name.split('/')[1]
         self.datasets[dataset_name]["tags_list"] = dataset_file[run + "/event_info/tag_number_list"].value
     
-    def loop_on_images(self, n=-1, apply_to_all_images=None):
+    def analyze_images(self, n=-1):
         """
         Executes a loop, where the registered functions are applied to all the images
         """
         for dataset_name, dataset in self.datasets.iteritems(): 
             n_images = len(dataset["tags_list"])
-            for fname, fs in self.functions.iteritems():
-                fs['results']["n_entries"] = n_images
-                fs['temp']["current_entry"] = 0
+            for analysis in self.analyses:
+                analysis.results["n_entries"] = n_images
+                analysis.temp_arguments["current_entry"] = 0
             
             #for image in images:
             for tag in dataset['tags_list'][0:n]:
@@ -553,13 +593,15 @@ class AnalysisOnImages(object):
                     for k, v in self.f_for_all_images.iteritems():
                         image = v['f'](image, **v['args'])
                         
-                for fname, fs in self.functions.iteritems():
-                    fs['results'], fs['temp'] = fs['f'](fs['results'], fs['temp'], image, **fs['args'])
+                for analysis in self.analyses:
+                    analysis.results, analysis.temporary_arguments = analysis.function(analysis.results, 
+                                                                                       analysis.temp_arguments, 
+                                                                                       image, 
+                                                                                       **analysis.arguments)
     
-            for fname, fs in self.functions.iteritems():
-                if fs["result_f"] is None:
-                    self.results[fname] = fs['results']
+            for analysis in self.analyses:
+                if analysis.post_analysis_function is None:
                     continue
-                self.results[fname] = fs["result_f"](fs['results'], fs['temp'])
-        return self.results
+                analysis.results = analysis.post_analysis_function(analysis.results, analysis.temp_arguments)
+        #return self.results
 
