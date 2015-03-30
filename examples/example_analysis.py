@@ -15,6 +15,10 @@ def get_line_histos(results, temp, image, axis=0, bins=None):
     """
     This function creates an ADU histogram per each pixel in the direction defined by the axis parameter.
     """
+    if image is None:
+        temp["current_entry"] += 1
+        return results, temp
+
     if bins is None:
         bins = np.arange(-100, 1000, 5)
 
@@ -39,9 +43,11 @@ def get_line_histos(results, temp, image, axis=0, bins=None):
 
 if __name__ == "__main__":
  
-    hf = h5py.File("/home/sala/Work/Data/Sacla/ZnO/257325.h5") 
-    dataset1 = "/run_257325/detector_2d_1/"
-    roi = [[0, 1024], [0, 250]]
+    #hf = h5py.File("/home/sala/Work/Data/Sacla/ZnO/257325.h5") 
+    hf = h5py.File("/home/sala/Work/Data/Sacla/ZnO/258706_roi.h5")
+    #dataset1 = "/run_257325/detector_2d_1/"
+    dataset1 = "/run_258706/detector_2d_1/"
+    roi = [[0, 1024], [0, 72]]
     thr = 65
 
     an = ut.analysis.AnalysisProcessor()
@@ -59,7 +65,7 @@ if __name__ == "__main__":
 
 
     plt.figure(figsize=(7, 7))
-    plt.plot(results_spectra["spectra"].sum(axis=0), 
+    plt.plot(np.nansum(results_spectra["spectra"], axis=0), 
              label="ADU > " + str(thr))
     plt.legend(loc='best')
     plt.show()    
@@ -75,7 +81,7 @@ if __name__ == "__main__":
     plt.colorbar()
     plt.subplot(122)
     plt.imshow(results_mean["mean"], 
-               aspect=0.5, vmax=1.5, 
+               aspect=0.5, #vmax=1.5, 
                extent=(roi[1][0], roi[1][1], roi[0][1], roi[0][0]))
     plt.colorbar()
     plt.tight_layout()

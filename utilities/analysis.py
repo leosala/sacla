@@ -373,23 +373,39 @@ def get_spectra_from_2D(fname, roi=[], adu_thr=None, corr=False, corr_thr=0., de
 
 
 def image_get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None):
+
+    if axis == 1:
+        other_axis = 0
+    else:
+        other_axis = 1
+
+    if temp["current_entry"] == 0:
+        results["spectra"] = np.empty((results['n_entries'], temp["image_shape"][other_axis]), dtype=temp["image_dtype"]) 
+  
+    # if there is no image, return NaN
+    if image_in is None:
+        results["spectra"][temp['current_entry']] = np.ones(temp["image_shape"][other_axis], dtype=temp["image_dtype"])
+        results["spectra"][temp['current_entry']][:] = np.NAN
+        temp["current_entry"] += 1
+        return results, temp
+    
     image = image_in.copy()
- 
     if thr_low is not None:
         image[ image < thr_low] = 0
     if thr_hi is not None:
         image[ image > thr_hi] = 0
 
     result = image.sum(axis=axis)
-    if temp["current_entry"] == 0:
-        results["spectra"] = np.empty((results['n_entries'], ) + result.shape, dtype=result.dtype) 
-        
+          
     results["spectra"][temp['current_entry']] = result
     temp["current_entry"] += 1
     return results, temp
 
     
 def image_get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
+    if image_in is None:
+        return results, temp
+        
     image = image_in.copy()
     
     if thr_low is not None:
@@ -419,6 +435,9 @@ def image_get_mean_std_results(results, temp):
 
 
 def image_get_histo(results, temp, image, bins=None):
+    if image is None:
+        return results, temp
+
     if bins is None:
         bins = np.arange(-100, 1000, 5)
     t_histo = np.bincount(np.digitize(image.flatten(), bins[1:-1]), 
@@ -586,18 +605,30 @@ class AnalysisProcessor(object):
                 analysis.results["n_entries"] = n_images
                 analysis.temp_arguments["current_entry"] = 0
             
+                # first loop to determine the image size... probably it can be done differently
+                for tag in dataset['tags_list'][0:n]:
+                    try:
+                        image = dataset['file'][dataset_name]["tag_" + str(tag) + "/detector_data"][:]
+                        analysis.temp_arguments["image_shape"] = image.shape
+                        analysis.temp_arguments["image_dtype"] = image.dtype
+                        break
+                    except:
+                        pass
+                
             #for image in images:
             for tag in dataset['tags_list'][0:n]:
-                image = dataset['file'][dataset_name]["tag_" + str(tag) + "/detector_data"][:]
-                if self.f_for_all_images != {}:
-                    for k, v in self.f_for_all_images.iteritems():
-                        image = v['f'](image, **v['args'])
+                try:
+                    image = dataset['file'][dataset_name]["tag_" + str(tag) + "/detector_data"][:]
+                    if self.f_for_all_images != {}:
+                        for k, v in self.f_for_all_images.iteritems():
+                            image = v['f'](image, **v['args'])
+                except:
+                    # when an image does not exist, a Nan (not a number) is returned. What to
+                    # do with this depends on the analysis function itself
+                    image = None
                         
                 for analysis in self.analyses:
-                    analysis.results, analysis.temporary_arguments = analysis.function(analysis.results, 
-                                                                                       analysis.temp_arguments, 
-                                                                                       image, 
-                                                                                       **analysis.arguments)
+                    analysis.results, analysis.temporary_arguments = analysis.function(analysis.results, analysis.temp_arguments, image, **analysis.arguments)
     
             for analysis in self.analyses:
                 if analysis.post_analysis_function is None:
