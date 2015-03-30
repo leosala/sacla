@@ -596,6 +596,16 @@ class AnalysisProcessor(object):
         run = dataset_name.split('/')[1]
         self.datasets[dataset_name]["tags_list"] = dataset_file[run + "/event_info/tag_number_list"].value
     
+    def set_sacla_dataset(self, dataset_file, dataset_name):
+        """
+        Add a SACLA dataset to the list of datasets to be analyzed
+        """
+        self.datasets = {}
+        self.datasets[dataset_name] = {'file': dataset_file}
+        # assumption: one run per file
+        run = dataset_name.split('/')[1]
+        self.datasets[dataset_name]["tags_list"] = dataset_file[run + "/event_info/tag_number_list"].value
+
     def analyze_images(self, n=-1):
         """
         Executes a loop, where the registered functions are applied to all the images
