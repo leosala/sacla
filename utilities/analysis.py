@@ -445,6 +445,7 @@ def image_get_histo(results, temp, image, bins=None):
     
     if temp["current_entry"] == 0:
         results["histo_adu"] = t_histo
+        results["histo_bins"]
     else:
         results["histo_adu"] += t_histo
 
@@ -551,7 +552,7 @@ class AnalysisProcessor(object):
         self.f_for_all_images = {}
         self.analyses = []
         self.available_analyses = {}
-        self.available_analyses["histos_adu"] = (image_get_histo, None)
+        self.available_analyses["histo_adu"] = (image_get_histo, None)
         self.available_analyses["mean_std"] = (image_get_mean_std, image_get_mean_std_results)
         self.available_analyses["spectra"] = (image_get_spectra, None)
         self.available_preprocess_f = {}
