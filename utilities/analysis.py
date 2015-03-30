@@ -445,7 +445,7 @@ def image_get_histo(results, temp, image, bins=None):
     
     if temp["current_entry"] == 0:
         results["histo_adu"] = t_histo
-        results["histo_bins"]
+        results["histo_bins"] = bins
     else:
         results["histo_adu"] += t_histo
 
