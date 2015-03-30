@@ -370,3 +370,196 @@ def get_spectra_from_2D(fname, roi=[], adu_thr=None, corr=False, corr_thr=0., de
     results["is_laser"] = f[run + "/event_info/bl_3/lh_1/laser_pulse_selector_status"][:]
     results["source_filename"] = fname
     return results
+
+
+
+def get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None):
+    image = image_in.copy()
+ 
+    if thr_low is not None:
+        image[ image < thr_low] = 0
+    if thr_hi is not None:
+        image[ image > thr_hi] = 0
+
+    result = image.sum(axis=axis)
+    if temp["current_entry"] == 0:
+        results["spectra"] = np.empty((results['n_entries'], ) + result.shape, dtype=result.dtype) 
+        
+    results["spectra"][temp['current_entry']] = result
+    temp["current_entry"] += 1
+    return results, temp
+
+    
+def get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
+    image = image_in.copy()
+    
+    if thr_low is not None:
+        image[ image < thr_low] = 0
+    if thr_hi is not None:
+        image[ image > thr_hi] = 0
+    
+    if temp["current_entry"] == 0:
+        temp["sum"] = np.array(image)
+        temp["sum2"] = np.array(image * image)
+    else:
+        temp["sum"] += image
+        temp["sum2"] += np.array(image * image)
+
+    temp["current_entry"] += 1    
+
+    return results, temp    
+    
+
+def get_mean_std_results(results, temp):
+    mean = temp["sum"] / temp["current_entry"]
+    std = (temp["sum2"] / temp["current_entry"]) - mean * mean
+    std = np.sqrt(std)
+    results["mean"] = mean
+    results["std"] = std
+    return results
+
+
+def get_histo(results, temp, image, bins=None):
+    if bins is None:
+        bins = np.arange(-100, 1000, 5)
+    t_histo = np.bincount(np.digitize(image.flatten(), bins[1:-1]), 
+                          minlength=len(bins) - 1)
+    
+    if temp["current_entry"] == 0:
+        results["histo_adu"] = t_histo
+    else:
+        results["histo_adu"] += t_histo
+
+    temp["current_entry"] += 1
+    return results, temp                  
+  
+
+def get_line_histos(results, temp, image, axis=0, bins=None):
+    if bins is None:
+        bins = np.arange(-100, 1000, 5)
+
+    for i in range(image.shape[axis]):
+        if axis == 0:
+            t_histo = np.bincount(np.digitize(image[i, :].flatten(), bins[1:-1]), 
+                          minlength=len(bins) - 1)
+        elif axis == 1:
+            t_histo = np.bincount(np.digitize(image[:, i].flatten(), bins[1:-1]), 
+                          minlength=len(bins) - 1)
+
+        if temp["current_entry"] == 0 and i == 0:
+            results["histos_adu"] = np.empty([image.shape[axis], t_histo.shape[0]], 
+                                                dtype=image.dtype)
+        if temp["current_entry"] == 0:           
+            results["histos_adu"][i] = t_histo
+        else:
+            results["histos_adu"][i] += t_histo
+    temp["current_entry"] += 1
+    return results, temp
+
+# guard on fs with same name
+# container for f, res, tmp (internally)
+class AnalysisOnImages(object):
+    """
+    Simple class to perform analysis on SACLA datafiles. Due to the peculiar file 
+    format in use at SACLA (each image is a single dataset), any kind of
+    analysis must be performed as a loop over all images: due to this, I/O is
+    not optimized, and many useful NumPy methods cannot be easily used.
+    
+    With this class, each image is read in memory only once, and then passed 
+    to the registered methods to be analyzed. All registered functions must:
+    + take as arguments at least results (dict), temp (dict), image (2D array)
+    + return results, temp
+    
+    `results` is used to store the results produced by the function, while
+    `temp` stores temporary values that must be preserved during the image loop.
+    
+    A simple example is:
+
+    def get_spectra(results, temp, image, axis=0, ):
+        result = image.sum(axis=axis)
+        if temp["current_entry"] == 0:
+            results["spectra"] = np.empty((results['n_entries'], ) + result.shape, dtype=result.dtype) 
+            
+        results["spectra"][temp['current_entry']] = result
+        temp["current_entry"] += 1
+        return results, temp
+    
+    In order to apply this function to all images, you need to:
+    
+    # create an AnalysisOnImages object
+    an = AnalysisOnImages()
+
+    # load a dataset from a SACLA data file
+    hf = h5py.File("/home/sala/Work/Data/Sacla/ZnO/257325.h5") 
+    dataset1 = "/run_257325/detector_2d_1/"
+    an.load_sacla_dataset(hf, dataset1)
+
+    # register the function:    
+    an.load_function(get_spectra, args={'axis': 1})
+
+    # run the loop
+    results = an.loop_on_images(n=1000)
+
+    """
+
+    def __init__(self):
+        self.results = {}
+        self.temp = {}
+        self.functions = {}
+        self.datasets = {}    
+        self.f_for_all_images = {}
+    
+    # misleading
+    def apply_to_all_images(self, f, **kwargs):
+        """
+        Register a function to be applied to all images, before analysis (e.g. dark subtraction)
+        """
+        self.f_for_all_images[f.__name__] = {'f': f, "args": kwargs}
+    
+    def load_function(self, f, result_f=None, args={}):
+        """
+        Register a function to be run on images
+        """
+        if self.functions.has_key(f):
+            raise RuntimeError("Function %s has already been registered, please check your code" %(f.__name__) )
+            
+        self.functions[f.__name__] = {'f': f, 'result_f': result_f, 'args': args, 'results': {}, 'temp': {}}
+        self.results[f.__name__] = {}
+        #self.temp[f.__name__] = {}
+
+    def load_sacla_dataset(self, dataset_file, dataset_name):
+        """
+        Load a SACLA dataset
+        """
+        self.datasets[dataset_name] = {'file': dataset_file}
+        # assumption: one run per file
+        run = dataset_name.split('/')[1]
+        self.datasets[dataset_name]["tags_list"] = dataset_file[run + "/event_info/tag_number_list"].value
+    
+    def loop_on_images(self, n=-1, apply_to_all_images=None):
+        """
+        Executes a loop, where the registered functions are applied to all the images
+        """
+        for dataset_name, dataset in self.datasets.iteritems(): 
+            n_images = len(dataset["tags_list"])
+            for fname, fs in self.functions.iteritems():
+                fs['results']["n_entries"] = n_images
+                fs['temp']["current_entry"] = 0
+            
+            #for image in images:
+            for tag in dataset['tags_list'][0:n]:
+                image = dataset['file'][dataset_name]["tag_" + str(tag) + "/detector_data"][:]
+                if self.f_for_all_images != {}:
+                    for k, v in self.f_for_all_images.iteritems():
+                        image = v['f'](image, **v['args'])
+                        
+                for fname, fs in self.functions.iteritems():
+                    fs['results'], fs['temp'] = fs['f'](fs['results'], fs['temp'], image, **fs['args'])
+    
+            for fname, fs in self.functions.iteritems():
+                if fs["result_f"] is None:
+                    self.results[fname] = fs['results']
+                    continue
+                self.results[fname] = fs["result_f"](fs['results'], fs['temp'])
+        return self.results
+
