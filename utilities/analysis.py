@@ -1,10 +1,10 @@
 import numpy as np
 import math
-import utilities.cython_utils
+import cython_utils
 from time import time
 import sys
 import h5py
-
+import pydoc
 
 def rebin(a, *args):
     """
@@ -373,7 +373,28 @@ def get_spectra_from_2D(fname, roi=[], adu_thr=None, corr=False, corr_thr=0., de
 
 
 def image_get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None):
-
+    """Returns a spectra (projection) over an axis of an image. This function is to be used within an AnalysisProcessor instance.
+    
+    Parameters
+    ----------
+    results : dict
+        dictionary containing the results. This is provided by the AnalysisProcessor class
+    temp : dict
+        dictionary containing temporary variables. This is provided by the AnalysisProcessor class
+    image_in : Numpy array
+        the image. This is provided by the AnalysisProcessor class
+    axis: int, optional
+        the axis index over which the projection is taken. This is the same as array.sum(axis=axis). Default is 0
+    thr_hi: float, optional
+        Upper threshold to be applied to the image. Values higher than thr_hi will be put to 0. Default is None
+    thr_low: float, optional
+        Lower threshold to be applied to the image. Values lower than thr_low will be put to 0. Default is None
+    
+    Returns
+    -------
+    results, temp: dict
+        Dictionaries containing results and temporary variables, to be used internally by AnalysisProcessor
+    """
     if axis == 1:
         other_axis = 0
     else:
@@ -403,6 +424,9 @@ def image_get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None
 
     
 def image_get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
+    """
+    later
+    """
     if image_in is None:
         return results, temp
         
@@ -426,6 +450,9 @@ def image_get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
     
 
 def image_get_mean_std_results(results, temp):
+    """
+    later
+    """
     mean = temp["sum"] / temp["current_entry"]
     std = (temp["sum2"] / temp["current_entry"]) - mean * mean
     std = np.sqrt(std)
@@ -434,7 +461,10 @@ def image_get_mean_std_results(results, temp):
     return results
 
 
-def image_get_histo(results, temp, image, bins=None):
+def image_get_histo_adu(results, temp, image, bins=None):
+    """
+    later
+    """
     if image is None:
         return results, temp
 
@@ -555,12 +585,12 @@ class AnalysisProcessor(object):
         self.f_for_all_images = {}
         self.analyses = []
         self.available_analyses = {}
-        self.available_analyses["histo_adu"] = (image_get_histo, None)
-        self.available_analyses["mean_std"] = (image_get_mean_std, image_get_mean_std_results)
-        self.available_analyses["spectra"] = (image_get_spectra, None)
-        self.available_preprocess_f = {}
-        self.available_preprocess_f["set_roi"] = image_set_roi
-        self.available_preprocess_f["set_thr"] = image_set_thr
+        self.available_analyses["image_get_histo_adu"] = (image_get_histo_adu, None)
+        self.available_analyses["image_get_mean_std"] = (image_get_mean_std, image_get_mean_std_results)
+        self.available_analyses["image_get_spectra"] = (image_get_spectra, None)
+        self.available_preprocess = {}
+        self.available_preprocess["image_set_roi"] = image_set_roi
+        self.available_preprocess["image_set_thr"] = image_set_thr
         self.n = -1
         self.flatten_results = False
 
@@ -580,9 +610,9 @@ class AnalysisProcessor(object):
             f_name = f.__name__
 
         if isinstance(f, str):
-            if not self.available_preprocess_f.has_key(f):
+            if not self.available_preprocess.has_key(f):
                 raise RuntimeError("Preprocess function %s not available, please check your code" % f)
-            self.f_for_all_images[f_name] = {'f': self.available_preprocess_f[f], "args": kwargs}
+            self.f_for_all_images[f_name] = {'f': self.available_preprocess[f], "args": kwargs}
         else:
             self.f_for_all_images[f_name] = {'f': f, "args": kwargs}
     
@@ -595,6 +625,41 @@ class AnalysisProcessor(object):
         else:
             del self.f_for_all_images[label]
     
+    def print_help(self, label=""):
+        """Print help for a specific analysis or preprocess function
+        
+        """
+        if label is "":
+            print """\n
+            ######################## 
+            # Preprocess functions #
+            ########################\n"""
+            for f in self.available_preprocess.values():
+                print pydoc.plain(pydoc.render_doc(f))
+
+            print """\n
+            ######################## 
+            # Analysis  functions  #
+            ########################\n"""
+            for f in self.available_analyses.values():
+                print pydoc.plain(pydoc.render_doc(f[0]))
+        else:
+            if self.available_preprocess.has_key(label):
+                print """\n
+                ######################## 
+                # Preprocess functions #
+                ########################\n"""
+                print pydoc.plain(pydoc.render_doc(self.available_preprocess[label]))
+            elif self.available_analyses.has_key(label):
+                print """\n
+                ######################## 
+                # Analysis  functions  #
+                ########################\n"""
+                print pydoc.plain(pydoc.render_doc(self.available_analyses[label][0]))
+            else:
+                print "Function %s does not exist" % label
+                
+        
     def add_analysis(self, f, result_f=None, args={}, label=""):
         """
         Register a function to be run on images
@@ -610,6 +675,9 @@ class AnalysisProcessor(object):
                 analysis = Analysis(f, arguments=args, post_analysis_function=result_f, name=label)
             else:
                 analysis = Analysis(f, arguments=args, post_analysis_function=result_f)
+        if analysis.name in self.list_analysis():
+            print "[INFO] substituting analysis %s" % analysis.name
+            self.remove_analysis(label=analysis.name)
         self.analyses.append(analysis)
         return analysis.results
 
@@ -630,6 +698,7 @@ class AnalysisProcessor(object):
         """
         self.dataset_name = dataset_name
         if remove_preprocess:
+            print "[INFO] Setting a new dataset, removing stored preprocess functions. To overcome this, use remove_preprocess=False"
             self.remove_preprocess()
         
     def analyze_images(self, fname, n=-1):
