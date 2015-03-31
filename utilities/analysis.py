@@ -445,7 +445,7 @@ def image_get_histo(results, temp, image, bins=None):
     
     if temp["current_entry"] == 0:
         results["histo_adu"] = t_histo
-        results["histo_bins"] = bins
+        results["histo_adu_bins"] = bins
     else:
         results["histo_adu"] += t_histo
 
@@ -485,7 +485,7 @@ class Analysis(object):
     Simple container for the analysis functions to be loaded into AnalysisProcessor. At the moment, it is only
     used internally inside AnalysisProcessor
     """
-    def __init__(self, analysis_function, arguments={}, post_analysis_function=None):
+    def __init__(self, analysis_function, arguments={}, post_analysis_function=None, name=None):
         """
         :param analysis_function: the main analysis function to be run on images
         :param arguments: arguments to analysis_function
@@ -495,7 +495,10 @@ class Analysis(object):
         self.function = analysis_function
         self.post_analysis_function = post_analysis_function
         self.arguments = arguments
-
+        if name is not None:
+            self.name = name
+        else:
+            self.name = self.function.__name__
         self.temp_arguments = {}
         self.results = {}
 
@@ -545,10 +548,10 @@ class AnalysisProcessor(object):
     """
 
     def __init__(self):
-        self.results = {}
+        self.results = []
         self.temp = {}
         self.functions = {}
-        self.datasets = {}    
+        self.datasets = []
         self.f_for_all_images = {}
         self.analyses = []
         self.available_analyses = {}
@@ -558,21 +561,41 @@ class AnalysisProcessor(object):
         self.available_preprocess_f = {}
         self.available_preprocess_f["set_roi"] = image_set_roi
         self.available_preprocess_f["set_thr"] = image_set_thr
+        self.n = -1
+        self.flatten_results = False
 
-    
-    def preprocess_images(self, f, **kwargs):
+    def __call__(self, dataset_file, dataset_name=None, ):
+        #self.set_sacla_dataset(dataset_name)
+        return self.analyze_images(dataset_file, n=self.n)
+
+    def add_preprocess(self, f, label="", **kwargs):
         """
         Register a function to be applied to all images, before analysis (e.g. dark subtraction)
         """
-        
+        if label != "":
+            f_name = label
+        elif isinstance(f, str):
+            f_name = f
+        else:
+            f_name = f.__name__
+
         if isinstance(f, str):
             if not self.available_preprocess_f.has_key(f):
                 raise RuntimeError("Preprocess function %s not available, please check your code" % f)
-            self.f_for_all_images[f] = {'f': self.available_preprocess_f[f], "args": kwargs}
+            self.f_for_all_images[f_name] = {'f': self.available_preprocess_f[f], "args": kwargs}
         else:
-            self.f_for_all_images[f.__name__] = {'f': f, "args": kwargs}
+            self.f_for_all_images[f_name] = {'f': f, "args": kwargs}
     
-    def add_analysis(self, f, result_f=None, args={}):
+    def list_preprocess(self):
+        return self.f_for_all_images.keys()
+    
+    def remove_preprocess(self, label=None):
+        if label is None:
+            self.f_for_all_images = {}
+        else:
+            del self.f_for_all_images[label]
+    
+    def add_analysis(self, f, result_f=None, args={}, label=""):
         """
         Register a function to be run on images
         """
@@ -581,69 +604,84 @@ class AnalysisProcessor(object):
             if not self.available_analyses.has_key(f):
                 raise RuntimeError("Analysis %s not available, please check your code" % f)
             analysis = Analysis(self.available_analyses[f][0], arguments=args, 
-                                post_analysis_function=self.available_analyses[f][1])
+                                post_analysis_function=self.available_analyses[f][1], name=f)
         else:
-            analysis = Analysis(f, arguments=args, post_analysis_function=result_f)
+            if label != "":
+                analysis = Analysis(f, arguments=args, post_analysis_function=result_f, name=label)
+            else:
+                analysis = Analysis(f, arguments=args, post_analysis_function=result_f)
         self.analyses.append(analysis)
         return analysis.results
 
-    def add_sacla_dataset(self, dataset_file, dataset_name):
-        """
-        Add a SACLA dataset to the list of datasets to be analyzed
-        """
-        self.datasets[dataset_name] = {'file': dataset_file}
-        # assumption: one run per file
-        run = dataset_name.split('/')[1]
-        self.datasets[dataset_name]["tags_list"] = dataset_file[run + "/event_info/tag_number_list"].value
-    
-    def set_sacla_dataset(self, dataset_file, dataset_name):
-        """
-        Add a SACLA dataset to the list of datasets to be analyzed
-        """
-        self.datasets = {}
-        self.datasets[dataset_name] = {'file': dataset_file}
-        # assumption: one run per file
-        run = dataset_name.split('/')[1]
-        self.datasets[dataset_name]["tags_list"] = dataset_file[run + "/event_info/tag_number_list"].value
+    def list_analysis(self):
+        return [x.name for x in self.analyses]
 
-    def analyze_images(self, n=-1):
+    def remove_analysis(self, label=None):
+        if label is None:
+            self.analyses = []
+        else:
+            for an in self.analyses:
+                if an.name == label:
+                    self.analyses.remove(an)
+
+    def set_sacla_dataset(self, dataset_name, remove_preprocess=True):
+        """
+        Set the name for the SACLA dataset to be analyzed
+        """
+        self.dataset_name = dataset_name
+        if remove_preprocess:
+            self.remove_preprocess()
+        
+    def analyze_images(self, fname, n=-1):
         """
         Executes a loop, where the registered functions are applied to all the images
         """
-        for dataset_name, dataset in self.datasets.iteritems(): 
-            n_images = len(dataset["tags_list"])
-            for analysis in self.analyses:
-                analysis.results["n_entries"] = n_images
-                analysis.temp_arguments["current_entry"] = 0
-            
-                # first loop to determine the image size... probably it can be done differently
-                for tag in dataset['tags_list'][0:n]:
-                    try:
-                        image = dataset['file'][dataset_name]["tag_" + str(tag) + "/detector_data"][:]
-                        analysis.temp_arguments["image_shape"] = image.shape
-                        analysis.temp_arguments["image_dtype"] = image.dtype
-                        break
-                    except:
-                        pass
-                
-            #for image in images:
-            for tag in dataset['tags_list'][0:n]:
+        if self.n != -1 and n == -1:
+            n = self.n
+
+        results = {}
+        hf = h5py.File(fname, "r")
+        self.run = hf.keys()[-1]  # find a better way
+        dataset = hf[self.run + "/" + self.dataset_name]
+        tags_list = hf[self.run + "/event_info/tag_number_list"].value
+        n_images = len(tags_list)
+        for analysis in self.analyses:
+            analysis.results["n_entries"] = n_images
+            analysis.temp_arguments["current_entry"] = 0
+        
+            # first loop to determine the image size... probably it can be done differently
+            for tag in tags_list[0:n]:
                 try:
-                    image = dataset['file'][dataset_name]["tag_" + str(tag) + "/detector_data"][:]
-                    if self.f_for_all_images != {}:
-                        for k, v in self.f_for_all_images.iteritems():
-                            image = v['f'](image, **v['args'])
+                    image = dataset["tag_" + str(tag) + "/detector_data"][:]
+                    analysis.temp_arguments["image_shape"] = image.shape
+                    analysis.temp_arguments["image_dtype"] = image.dtype
+                    break
                 except:
-                    # when an image does not exist, a Nan (not a number) is returned. What to
-                    # do with this depends on the analysis function itself
-                    image = None
-                        
-                for analysis in self.analyses:
-                    analysis.results, analysis.temporary_arguments = analysis.function(analysis.results, analysis.temp_arguments, image, **analysis.arguments)
-    
+                    pass
+            
+        #for image in images:
+        for tag in tags_list[0:n]:
+            try:
+                image = dataset["tag_" + str(tag) + "/detector_data"][:]
+                if self.f_for_all_images != {}:
+                    for k, v in self.f_for_all_images.iteritems():
+                        image = v['f'](image, **v['args'])
+            except:
+                # when an image does not exist, a Nan (not a number) is returned. What to
+                # do with this depends on the analysis function itself
+                image = None
+                    
             for analysis in self.analyses:
-                if analysis.post_analysis_function is None:
-                    continue
+                analysis.results, analysis.temporary_arguments = analysis.function(analysis.results, analysis.temp_arguments, image, **analysis.arguments)
+
+        for analysis in self.analyses:
+            if analysis.post_analysis_function is not None:
                 analysis.results = analysis.post_analysis_function(analysis.results, analysis.temp_arguments)
-        #return self.results
+            if self.flatten_results:
+                results.update(analysis.results)
+            else:
+                results[analysis.name] = analysis.results
+        self.results = results
+        hf.close()
+        return self.results
 
