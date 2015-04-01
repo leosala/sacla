@@ -31,56 +31,66 @@ def get_line_histos(results, temp, image, axis=0, bins=None):
                           minlength=len(bins) - 1)
 
         if temp["current_entry"] == 0 and i == 0:
-            results["histos_adu"] = np.empty([image.shape[axis], t_histo.shape[0]], 
+            results["histos_adu_line"] = np.empty([image.shape[axis], t_histo.shape[0]], 
                                                 dtype=image.dtype)
         if temp["current_entry"] == 0:           
-            results["histos_adu"][i] = t_histo
+            results["histos_adu_line"][i] = t_histo
         else:
-            results["histos_adu"][i] += t_histo
+            results["histos_adu_line"][i] += t_histo
     temp["current_entry"] += 1
     return results, temp
     
 
 if __name__ == "__main__":
  
-    #hf = h5py.File("/home/sala/Work/Data/Sacla/ZnO/257325.h5") 
-    hf = h5py.File("/home/sala/Work/Data/Sacla/ZnO/258706_roi.h5")
-    #dataset1 = "/run_257325/detector_2d_1/"
-    dataset1 = "/run_258706/detector_2d_1/"
-    roi = [[0, 1024], [0, 72]]
+    # set filename and dataset name     
+    #fname = "/home/sala/Work/Data/Sacla/ZnO/258706_roi.h5"
+    fname = "/home/sala/Work/Data/Sacla/ZnO/257325.h5"
+    dataset_name = "detector_2d_1"
+    
+    # set up parameters for ROI and threshold
+    roi = [[0, 1024], [0, 400]]
     thr = 65
 
+    # create an AnalysisProcessor object
     an = ut.analysis.AnalysisProcessor()
-    an.preprocess_images("set_roi", roi=roi)
-    an.preprocess_images("set_thr", thr_low=thr)
-        
-    an.add_sacla_dataset(hf, dataset1)
-    results_spectra = an.add_analysis("spectra", args={'axis': 1, 'thr_low': thr,})
-    results_mean = an.add_analysis("mean_std", args={'thr_low': thr})
-
+    # if you want a flat dict as a result
+    an.flatten_results = True
+    
+    # add analysis
+    an.add_analysis("image_get_spectra", args={'axis': 1, 'thr_low': thr,})
+    an.add_analysis("image_get_mean_std", args={'thr_low': thr})
     bins = np.arange(-150, 300, 5)
-    results_histos = an.add_analysis("histos_adu", args={'bins': bins})
-    results_histos_line = an.add_analysis(get_line_histos, args={'axis': 0, 'bins': bins})
-    results = an.analyze_images()  # n=100)
+    an.add_analysis("image_get_histo_adu", args={'bins': bins})
+    an.add_analysis(get_line_histos, args={'axis': 0, 'bins': bins})
 
+    # set the dataset
+    an.set_sacla_dataset(dataset_name)
+    # add preprocess steps
+    an.add_preprocess("image_set_roi", roi=roi)
+    an.add_preprocess("image_set_thr", thr_low=thr)
+        
+    # run the analysis
+    results = an.analyze_images(fname, n=1000)
 
+    # plot
     plt.figure(figsize=(7, 7))
-    plt.plot(np.nansum(results_spectra["spectra"], axis=0), 
+    plt.plot(np.nansum(results["spectra"], axis=0), 
              label="ADU > " + str(thr))
     plt.legend(loc='best')
     plt.show()    
 
     plt.figure(figsize=(7, 7))
-    plt.bar(bins[:-1], results_histos["histo_adu"], log=True, width=5)
+    plt.bar(bins[:-1], results["histo_adu"], log=True, width=5)
     plt.show()
 
     plt.figure(figsize=(15, 10))
     plt.subplot(121)
-    plt.imshow(results_histos_line["histos_adu"], vmin=0, vmax=3, 
+    plt.imshow(results["histos_adu_line"], vmin=0, vmax=3, 
                extent=(bins[0], bins[-1], roi[0][1], roi[0][0]), aspect=0.5)
     plt.colorbar()
     plt.subplot(122)
-    plt.imshow(results_mean["mean"], 
+    plt.imshow(results["mean"], 
                aspect=0.5, #vmax=1.5, 
                extent=(roi[1][0], roi[1][1], roi[0][1], roi[0][0]))
     plt.colorbar()

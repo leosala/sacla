@@ -565,15 +565,15 @@ class AnalysisProcessor(object):
     an = AnalysisProcessor()
 
     # load a dataset from a SACLA data file
-    hf = h5py.File("/home/sala/Work/Data/Sacla/ZnO/257325.h5") 
-    dataset1 = "/run_257325/detector_2d_1/"
-    an.add_sacla_dataset(hf, dataset1)
+    fname = "/home/sala/Work/Data/Sacla/ZnO/257325.h5"
+    dataset_name = "detector_2d_1"
+    an.set_sacla_dataset(hf, dataset_name)
 
     # register the function:    
     an.add_analysis(get_spectra, args={'axis': 1})
 
     # run the loop
-    results = an.analyze_images(n=1000)
+    results = an.analyze_images(fname, n=1000)
 
     """
 
@@ -617,9 +617,25 @@ class AnalysisProcessor(object):
             self.f_for_all_images[f_name] = {'f': f, "args": kwargs}
     
     def list_preprocess(self):
+        """List all loaded preprocess functions
+
+        
+        Returns
+        ----------
+        list :
+            list of all loaded preprocess functions
+        """
         return self.f_for_all_images.keys()
     
     def remove_preprocess(self, label=None):
+        """Remove loaded preprocess functions. If called without arguments, it removes all functions.
+        
+        Parameters
+        ----------
+        label : string
+            label of the preprocess function to be removes
+        
+        """
         if label is None:
             self.f_for_all_images = {}
         else:
