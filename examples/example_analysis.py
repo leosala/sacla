@@ -44,8 +44,9 @@ def get_line_histos(results, temp, image, axis=0, bins=None):
 if __name__ == "__main__":
  
     # set filename and dataset name     
+    DIR = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/full_hdf5/"
     #fname = "/home/sala/Work/Data/Sacla/ZnO/258706_roi.h5"
-    fname = "/home/sala/Work/Data/Sacla/ZnO/257325.h5"
+    fname = DIR + "256635-257499/257325.h5"
     dataset_name = "detector_2d_1"
     
     # set up parameters for ROI and threshold
@@ -67,11 +68,11 @@ if __name__ == "__main__":
     # set the dataset
     an.set_sacla_dataset(dataset_name)
     # add preprocess steps
-    an.add_preprocess("image_set_roi", roi=roi)
-    an.add_preprocess("image_set_thr", thr_low=thr)
+    #an.add_preprocess("image_set_roi", roi=roi)
+    #an.add_preprocess("image_set_thr", thr_low=thr)
         
     # run the analysis
-    results = an.analyze_images(fname, n=1000)
+    results = an.analyze_images(fname, n=100)
 
     # plot
     plt.figure(figsize=(7, 7))
