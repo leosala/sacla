@@ -69,12 +69,13 @@ if __name__ == "__main__":
     # set the dataset
     an.set_sacla_dataset(dataset_name)
     # add preprocess steps
-    an.add_preprocess("image_set_roi", args={'roi': roi})
+    #an.add_preprocess("image_set_roi", args={'roi': roi})
     #an.add_preprocess("image_set_thr", thr_low=thr)
         
     # run the analysis
-    results = an.analyze_images(fname, n=100)
+    results = an.analyze_images(fname, n=1000)
 
+    """
     # plot
     plt.figure(figsize=(7, 7))
     plt.plot(np.nansum(results["spectra"], axis=0), 
@@ -98,3 +99,4 @@ if __name__ == "__main__":
     plt.colorbar()
     plt.tight_layout()
     plt.show()    
+    """

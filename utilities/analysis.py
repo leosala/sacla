@@ -468,7 +468,7 @@ def image_get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
     
 
 def image_get_mean_std_results(results, temp):
-        """Function to be applied to results of image_get_std_results. This function is to be used within an AnalysisProcessor instance, and it is called automatically.
+    """Function to be applied to results of image_get_std_results. This function is to be used within an AnalysisProcessor instance, and it is called automatically.
     
     Parameters
     ----------
@@ -480,19 +480,18 @@ def image_get_mean_std_results(results, temp):
     Returns
     -------
     results: dict
-        Dictionaries containing results and temporary variables, to be used internally by AnalysisProcessor
+        Dictionaries containing results and temporary variables, to be used internally by AnalysisProcessor. Result keys are 'images_mean' and 'images_std', which are the average and the standard deviation, respectively.
     """
-
     mean = temp["sum"] / temp["current_entry"]
     std = (temp["sum2"] / temp["current_entry"]) - mean * mean
     std = np.sqrt(std)
-    results["mean"] = mean
-    results["std"] = std
+    results["images_mean"] = mean
+    results["images_std"] = std
     return results
 
 
 def image_get_histo_adu(results, temp, image, bins=None):
-        """Returns the total histogram of counts of images. This function is to be used within an AnalysisProcessor instance.
+    """Returns the total histogram of counts of images. This function is to be used within an AnalysisProcessor instance. This function can be expensive.
     
     Parameters
     ----------
@@ -605,8 +604,7 @@ class Analysis(object):
 
 
 class AnalysisProcessor(object):
-    """
-    Simple class to perform analysis on SACLA datafiles. Due to the peculiar file 
+    """Simple class to perform analysis on SACLA datafiles. Due to the peculiar file 
     format in use at SACLA (each image is a single dataset), any kind of
     analysis must be performed as a loop over all images: due to this, I/O is
     not optimized, and many useful NumPy methods cannot be easily used.
@@ -790,7 +788,6 @@ class AnalysisProcessor(object):
         for analysis in self.analyses:
             analysis.results["n_entries"] = n_images
             analysis.temp_arguments["current_entry"] = 0
-        
             analysis.temp_arguments["image_shape"] = None
             analysis.temp_arguments["image_dtype"] = None
 
