@@ -425,8 +425,25 @@ def image_get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None
 
     
 def image_get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
-    """
-    later
+    """Returns the average of images and their standard deviation. This function is to be used within an AnalysisProcessor instance.
+    
+    Parameters
+    ----------
+    results : dict
+        dictionary containing the results. This is provided by the AnalysisProcessor class
+    temp : dict
+        dictionary containing temporary variables. This is provided by the AnalysisProcessor class
+    image_in : Numpy array
+        the image. This is provided by the AnalysisProcessor class
+    thr_hi: float, optional
+        Upper threshold to be applied to the image. Values higher than thr_hi will be put to 0. Default is None
+    thr_low: float, optional
+        Lower threshold to be applied to the image. Values lower than thr_low will be put to 0. Default is None
+    
+    Returns
+    -------
+    results, temp: dict
+        Dictionaries containing results and temporary variables, to be used internally by AnalysisProcessor
     """
     if image_in is None:
         return results, temp
@@ -451,8 +468,19 @@ def image_get_mean_std(results, temp, image_in, thr_hi=None, thr_low=None):
     
 
 def image_get_mean_std_results(results, temp):
-    """
-    later
+        """Function to be applied to results of image_get_std_results. This function is to be used within an AnalysisProcessor instance, and it is called automatically.
+    
+    Parameters
+    ----------
+    results : dict
+        dictionary containing the results. This is provided by the AnalysisProcessor class
+    temp : dict
+        dictionary containing temporary variables. This is provided by the AnalysisProcessor class
+    
+    Returns
+    -------
+    results: dict
+        Dictionaries containing results and temporary variables, to be used internally by AnalysisProcessor
     """
 
     mean = temp["sum"] / temp["current_entry"]
@@ -464,8 +492,23 @@ def image_get_mean_std_results(results, temp):
 
 
 def image_get_histo_adu(results, temp, image, bins=None):
-    """
-    later
+        """Returns the total histogram of counts of images. This function is to be used within an AnalysisProcessor instance.
+    
+    Parameters
+    ----------
+    results: dict
+        dictionary containing the results. This is provided by the AnalysisProcessor class
+    temp: dict
+        dictionary containing temporary variables. This is provided by the AnalysisProcessor class
+    image: Numpy array
+        the image. This is provided by the AnalysisProcessor class
+    bins: array, optional
+        array with bin extremes        
+        
+    Returns
+    -------
+    results, temp: dict
+        Dictionaries containing results and temporary variables, to be used internally by AnalysisProcessor
     """
     if image is None:
         return results, temp
@@ -486,13 +529,19 @@ def image_get_histo_adu(results, temp, image, bins=None):
   
 
 def image_set_roi(image, roi=None):
-    """
-    Returns a copy of the original image, selected by the ROI region specified
-    
-    :param image: the input array image
-    :param roi: the ROI selection, as [[X_lo, X_hi], [Y_lo, Y_hi]]
-    
-    :return image: a copy of the original image
+    """Returns a copy of the original image, selected by the ROI region specified
+
+    Parameters
+    ----------
+    imagee: Numpy array
+        the input array image
+    roi: array
+        the ROI selection, as [[X_lo, X_hi], [Y_lo, Y_hi]]
+        
+    Returns
+    -------
+    image: Numpy array
+        a copy of the original image, with ROI applied
     """
     if roi is not None:
         new_image = image[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
@@ -502,8 +551,23 @@ def image_set_roi(image, roi=None):
  
  
 def image_set_thr(image, thr_low=None, thr_hi=None, replacement_value=0):
-    """
-    Apply a low / hi threshold on the image, substituting the thresholded elements with replacement_value
+    """Returns a copy of the original image, with a low and an high thresholds applied
+
+    Parameters
+    ----------
+    image: Numpy array
+        the input array image
+    thr_low: int, float
+        the lower threshold
+    thr_hi: int, float
+        the higher threshold
+    replacement_value: int, float
+        the value with which values lower or higher than thresholds should be put equal to
+        
+    Returns
+    -------
+    image: Numpy array
+        a copy of the original image, with ROI applied
     """
     new_image = image.copy()
     if thr_low is not None:
@@ -514,15 +578,19 @@ def image_set_thr(image, thr_low=None, thr_hi=None, replacement_value=0):
 
 
 class Analysis(object):
-    """
-    Simple container for the analysis functions to be loaded into AnalysisProcessor. At the moment, it is only
+    """Simple container for the analysis functions to be loaded into AnalysisProcessor. At the moment, it is only
     used internally inside AnalysisProcessor
     """
     def __init__(self, analysis_function, arguments={}, post_analysis_function=None, name=None):
         """
-        :param analysis_function: the main analysis function to be run on images
-        :param arguments: arguments to analysis_function
-        :param post_analysis_function: function to be called only once after the analysis loop
+        Parameters
+        ----------
+        analysis_function: callable function
+            the main analysis function to be run on images
+        arguments: dict
+            arguments to analysis_function
+        post_analysis_function: callable function
+            function to be called only once after the analysis loop
         """
 
         self.function = analysis_function
@@ -602,7 +670,7 @@ class AnalysisProcessor(object):
         #self.set_sacla_dataset(dataset_name)
         return self.analyze_images(dataset_file, n=self.n)
 
-    def add_preprocess(self, f, label="", **kwargs):
+    def add_preprocess(self, f, label="", args={}):
         """
         Register a function to be applied to all images, before analysis (e.g. dark subtraction)
         """
@@ -616,14 +684,13 @@ class AnalysisProcessor(object):
         if isinstance(f, str):
             if not self.available_preprocess.has_key(f):
                 raise RuntimeError("Preprocess function %s not available, please check your code" % f)
-            self.f_for_all_images[f_name] = {'f': self.available_preprocess[f], "args": kwargs}
+            self.f_for_all_images[f_name] = {'f': self.available_preprocess[f], "args": args}
         else:
-            self.f_for_all_images[f_name] = {'f': f, "args": kwargs}
+            self.f_for_all_images[f_name] = {'f': f, "args": args}
         self.preprocess_list.append(f_name)
         
     def list_preprocess(self):
         """List all loaded preprocess functions
-
         
         Returns
         ----------
@@ -638,8 +705,7 @@ class AnalysisProcessor(object):
         Parameters
         ----------
         label : string
-            label of the preprocess function to be removes
-        
+            label of the preprocess function to be removed
         """
         if label is None:
             self.f_for_all_images = {}
@@ -649,8 +715,22 @@ class AnalysisProcessor(object):
             self.preprocess_list.remove[label] 
     
     def add_analysis(self, f, result_f=None, args={}, label=""):
-        """
-        Register a function to be run on images
+        """Register a function to be run on images
+        
+        Parameters
+        ----------
+        f: callable function
+            analysis function to be loaded. Must take at least results (dict), temp (dict) and image (numpy array) as input, and return just results and temp. See main class help.
+        result_f: callable function
+            function to be applied to the results, at the end of the loop on images.
+        args: dict
+            arguments for the analysis function
+        label : string
+            label to be assigned to analysis function
+            
+        Returns
+        -------
+            None        
         """
         
         if isinstance(f, str):
