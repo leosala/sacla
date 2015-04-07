@@ -2,18 +2,16 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import h5py
 import sys
 
-
+# Loading SACLA tools 
 SACLA_LIB = "../"
 sys.path.append(SACLA_LIB)
 import utilities as ut
 
 
 def get_line_histos(results, temp, image, axis=0, bins=None):
-    """
-    This function creates an ADU histogram per each pixel in the direction defined by the axis parameter.
+    """This function creates an ADU histogram per each pixel in the direction defined by the axis parameter.
     """
     if image is None:
         temp["current_entry"] += 1
