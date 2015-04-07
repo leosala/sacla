@@ -201,177 +201,6 @@ def get_spectrum(data, f="sum", corr=None, chk_size=200, roi=None, masks=[]):
         return spectra
 
 
-#@profile
-def loop_on_images(f, tags_list, dset_name, corr=None, roi=[], spectra_axis=0, create_histos=True, adu_thr=None):
-    # variables declaration
-    sum_of_counts = []
-    spectra = []
-    histo = None
-    bins = None
-    image_sum = None 
-    spectra_none = []
-    
-    for i, t in enumerate(tags_list):
-        try:
-            image = f[dset_name + "/tag_" + str(t) + "/detector_data"][:]
-        except:
-            spectra.append(np.nan)
-            spectra_none.append(i)
-            #sum_of_counts.append(0)
-            continue
-        # applying corrections
-        if corr is not None:
-            image -= corr
-
-        # setup ROI
-        if roi != []:
-            image_roi = image[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]]
-        else:
-            image_roi = image
-
-        # from: https://gist.github.com/nkeim/4455635
-        if create_histos:
-            bins = np.arange(-100, 1000, 5)
-            t_histo = np.bincount(np.digitize(image_roi.flatten(), bins[1:-1]), minlength=len(bins) - 1)
-            # this is very expensive...
-            #t_histo, bins = np.histogram(image_roi, bins=range(-100, 1000, 5))
-
-            if histo is None:
-                histo = t_histo
-            else:
-                histo += t_histo
-
-        if adu_thr is not None:
-            image[image < adu_thr] = 0  # np.ma.masked_where(image_t < adu_thr, image_t)
-            image_roi[image_roi < adu_thr] = 0
-            
-        # sum of images
-        if image_sum is None:
-            image_sum = image
-        else:
-            image_sum += image
-            
-        sum_of_counts.append(image_roi.sum())
-        spectra.append(image_roi.sum(axis=spectra_axis))
-
-        if corr is None:
-            continue
-
-    # correct spectra array for missing tags
-    spectra_shape = None
-    for i, x in enumerate(spectra):
-        if i not in spectra_none:
-            spectra_shape = x.shape
-            break
-    for i in spectra_none:
-        #spectra[i] = np.nan * np.zeros(spectra_shape)
-        spectra[i] = np.zeros(spectra_shape)
-    # remove nans
-    spectra = np.array(spectra, dtype=spectra[i].dtype)
-    spectra[np.isnan(spectra)] = 0
-    return np.array(sum_of_counts, dtype=type(sum_of_counts[0])), histo, bins, image_sum, spectra
-
-
-#@profile
-def get_spectra_from_2D(fname, roi=[], adu_thr=None, corr=False, corr_thr=0., detectors=["detector_2d_1"], spectra_axis=0):
-    """
-    Get spectra and other useful information from SACLA data files.
-
-    :param fname: hdf5 filename
-    :param roi: ROI, as a list, e.g. [[0, 512], [10, 20]]. If a ROI per detector is to be used, it should be a list of lists, in the same order as detectors list. Default: []
-    :param adu_thr: lower threshold for ADU counts (not used for spectra and histo computations)
-    :param corr: create a Dark correction from this file, using an upper threshold corr_thr. If it is an array, then this array is subtracted to each image
-    :param corr_thr: threshold for dark correction computation
-    :param detectors: list of 2D detectors to be used in the computation. Default: ["detector_2d_1"]
-
-    :return: a dictionary of results, plus everything contained in the "daq_info/" dataset if available
-    """
-    results = {}
-    t0 = time()
-    try:
-        f = h5py.File(fname)
-        run = f.keys()[-1]
-        tags = f[run + "/event_info/tag_number_list"].value
-    except:
-        print sys.exc_info()
-        return {"elapsed_time": -1, "events_s": -1, "source_filename": ""}
-
-
-    # detectors loop
-    for di, detector in enumerate(detectors):
-        dset_name = ""
-        if detector in f[run].keys():
-            dset_name = run + "/" + detector
-        else:
-            # return a meaningful dict if no images are found
-            return {"elapsed_time": -1, "events_s": -1, "source_filename": fname, "run": int(run.replace("run_", ""))}
-
-        # getting the list of tags with images
-        tags_list = f[dset_name].keys()[1:]
-        # from text to ints
-        image_tags_list = [ int(x.replace("tag_", "")) for x in tags_list if x[0:3] == "tag"]
-
-        # getting the spectra
-        correction = None
-        correction_std = None
-        if corr is True:
-            correction, correction_std = per_pixel_correction_sacla(f[dset_name + "/"], tags, thr=corr_thr, get_std=True)
-        elif isinstance(corr, list):
-            correction = corr[di]
-
-        adu_thr2 = adu_thr
-        if isinstance(adu_thr, list):
-            adu_thr2 = adu_thr[di]
-
-        roi_t = roi
-        if len(np.array(roi).shape) == 3:
-            roi_t = roi[di]
-        
-        sum_of_counts, histo, bins, sum_images_noroi, spectra = loop_on_images(f, tags, dset_name, corr=correction, roi=roi_t, spectra_axis=spectra_axis, adu_thr=adu_thr2)
-
-        roi_mask = np.zeros(sum_images_noroi.shape, dtype=int)
-        if roi != []:
-            #if len(roi) == 2:
-            roi_mask[roi_t[0][0]:roi_t[0][1], roi_t[1][0]:roi_t[1][1]] = 1
-            #elif len(roi) == 3:
-            #    roi_mask[roi[di][0][0]:roi[di][0][1], roi[di][1][0]:roi[di][1][1]] = 1
-            #else:
-            #    print "[ERROR] Wrong ROI dimension %d, please check" % len(roi)
-            #    return {"elapsed_time": -1, "events_s": -1, "source_filename": fname, "run": int(run.replace("run_", ""))}
-        else:
-            roi_mask[:] = 1
-
-
-        results[detector + "-images_sum"] = sum_of_counts
-        results[detector + "-roi_mask"] = roi_mask
-        results[detector + "-sum_image_noroi"] = sum_images_noroi
-        results[detector + "-spectra"] = spectra
-        results[detector + "-adu_histo"] = histo
-        results[detector + "-adu_bins"] = bins
-        results[detector + "-dark_corr"] = correction
-        results[detector + "-dark_corr_std"] = correction_std
-
-    
-    tags_mask = [np.in1d(tags, image_tags_list)]
-
-    #if prefix in 
-    #for k, v in f[prefix].iteritems():
-    #    tmp_a = v[:][tags_mask]
-    #    results[k] = v[:][tags_mask]#np.ndarray(tmp_a.shape, )
-    #    #results[k] = tmp_a
-
-        
-    te = time() - t0
-    results["run"] = int(run.replace("run_", ""))
-    results["tags"] = np.array(image_tags_list)
-    results["elapsed_time"] = te
-    results["events_s"] = len(image_tags_list) / te
-    results["is_laser"] = f[run + "/event_info/bl_3/lh_1/laser_pulse_selector_status"][:]
-    results["source_filename"] = fname
-    return results
-
-
-
 def image_get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None):
     """Returns a spectra (projection) over an axis of an image. This function is to be used within an AnalysisProcessor instance.
     
@@ -400,25 +229,24 @@ def image_get_spectra(results, temp, image_in, axis=0, thr_hi=None, thr_low=None
     else:
         other_axis = 1
 
-    #print temp["current_entry"]
     if temp["current_entry"] == 0:
         results["spectra"] = np.empty((results['n_entries'], temp["image_shape"][other_axis]), dtype=temp["image_dtype"]) 
   
     # if there is no image, return NaN
     if image_in is None:
-        results["spectra"][temp['current_entry']] = np.ones(temp["image_shape"][other_axis], dtype=temp["image_dtype"])
-        results["spectra"][temp['current_entry']][:] = np.NAN
-        temp["current_entry"] += 1
-        return results, temp
+        result = np.ones(temp["image_shape"][other_axis], dtype=temp["image_dtype"])
+        result[:] = np.NAN
+    else:
+        image = image_in.copy()
+        if thr_low is not None:
+            image[ image < thr_low] = 0
+        if thr_hi is not None:
+            image[ image > thr_hi] = 0
     
-    image = image_in.copy()
-    if thr_low is not None:
-        image[ image < thr_low] = 0
-    if thr_hi is not None:
-        image[ image > thr_hi] = 0
+        result = np.nansum(image, axis=axis)
 
-    result = image.sum(axis=axis)
-
+    #if result[result > 1000] != []:
+    #    print temp['current_entry'], result[result > 1000]
     results["spectra"][temp['current_entry']] = result
     temp["current_entry"] += 1
     return results, temp
@@ -577,8 +405,7 @@ def image_set_thr(image, thr_low=None, thr_hi=None, replacement_value=0):
 
 
 class Analysis(object):
-    """Simple container for the analysis functions to be loaded into AnalysisProcessor. At the moment, it is only
-    used internally inside AnalysisProcessor
+    """Simple container for the analysis functions to be loaded into AnalysisProcessor. At the moment, it is only used internally inside AnalysisProcessor
     """
     def __init__(self, analysis_function, arguments={}, post_analysis_function=None, name=None):
         """
@@ -665,7 +492,6 @@ class AnalysisProcessor(object):
         self.preprocess_list = []
 
     def __call__(self, dataset_file, dataset_name=None, ):
-        #self.set_sacla_dataset(dataset_name)
         return self.analyze_images(dataset_file, n=self.n)
 
     def add_preprocess(self, f, label="", args={}):
@@ -748,9 +574,24 @@ class AnalysisProcessor(object):
         #return analysis.results
 
     def list_analysis(self):
+        """List all loaded analysis functions
+        
+        Returns
+        ----------
+        list :
+            list of all loaded analysis functions
+        """
         return [x.name for x in self.analyses]
 
     def remove_analysis(self, label=None):
+        """Remove a labelled analysis. If no label is provided, all the analyses are removed
+        
+        Parameters
+        ----------
+        label : string
+            Label of the analysis to be removed        
+        """
+        
         if label is None:
             self.analyses = []
         else:
@@ -761,6 +602,13 @@ class AnalysisProcessor(object):
     def set_sacla_dataset(self, dataset_name, remove_preprocess=True):
         """
         Set the name for the SACLA dataset to be analyzed
+        
+        Parameters
+        ----------
+        dataset_name : string
+            Name of the dataset to be added, without the trailing `/run_XXXXX/`
+        remove_preprocess : bool
+            Remove all the preprocess functions when setting a dataset
         """
         self.dataset_name = dataset_name
         self.results = {}
@@ -772,21 +620,30 @@ class AnalysisProcessor(object):
     def analyze_images(self, fname, n=-1):
         """
         Executes a loop, where the registered functions are applied to all the images
+        
+        Parameters
+        ----------
+        fname : string
+            Name of HDF5 Sacla file to analyze
+        n : int
+            Number of events to be analyzed. If -1, then all events will be analyzed.
         """
-         
         results = {}
         hf = h5py.File(fname, "r")
         self.run = hf.keys()[-1]  # find a better way
         dataset = hf[self.run + "/" + self.dataset_name]
         tags_list = hf[self.run + "/event_info/tag_number_list"].value
         
+        n_images = len(tags_list)
         if n != -1:
-            n_images = n
-        else:
             if n < len(tags_list):
-                n_images = len(tags_list)
+                n_images = n
+          
+                
         for analysis in self.analyses:
+            analysis.results = {}
             analysis.results["n_entries"] = n_images
+            analysis.temp_arguments = {}
             analysis.temp_arguments["current_entry"] = 0
             analysis.temp_arguments["image_shape"] = None
             analysis.temp_arguments["image_dtype"] = None
@@ -799,35 +656,42 @@ class AnalysisProcessor(object):
                     analysis.temp_arguments["image_dtype"] = image.dtype
                     break
                 except:
+                    print sys.exc_info()
                     pass
             
-        #for image in images:
-        for tag in tags_list[0:n]:
+        # loop on tags
+        for tag_i, tag in enumerate(tags_list[0:n_images]):
             try:
                 image = dataset["tag_" + str(tag) + "/detector_data"][:]
                 if self.f_for_all_images != {}:
                     for k in self.preprocess_list:
                         image = self.f_for_all_images[k]['f'](image, **self.f_for_all_images[k]['args'])
+            except KeyError:
+                image = None
+                pass
             except:
                 # when an image does not exist, a Nan (not a number) is returned. What to
                 # do with this depends on the analysis function itself
                 image = None
-                print "AAA"
                 print sys.exc_info()
-
+                pass
             if image is not None and analysis.temp_arguments["image_shape"] is not None:
                 analysis.temp_arguments["image_shape"] = image.shape
                 analysis.temp_arguments["image_dtype"] = image.dtype
 
             for analysis in self.analyses:
                 analysis.results, analysis.temporary_arguments = analysis.function(analysis.results, analysis.temp_arguments, image, **analysis.arguments)
-
+            #print tag_i            
+            #if analysis.name == "image_get_spectra":
+            #        print analysis.results["spectra"][analysis.results["spectra"] > 1000]
         for analysis in self.analyses:
             if analysis.post_analysis_function is not None:
                 analysis.results = analysis.post_analysis_function(analysis.results, analysis.temp_arguments)
             if self.flatten_results:
                 results.update(analysis.results)
             else:
+                #if analysis.name == "image_get_spectra":
+                #    print analysis.results["spectra"][analysis.results["spectra"] > 1000]
                 results[analysis.name] = analysis.results
         self.results = results
         hf.close()
@@ -836,6 +700,10 @@ class AnalysisProcessor(object):
     def print_help(self, label=""):
         """Print help for a specific analysis or preprocess function
         
+        Parameters
+        ----------
+        label : string
+            Label of the analysis or preprocess function whose help should be printed        
         """
         if label is "":
             print """\n
