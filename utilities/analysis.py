@@ -490,6 +490,7 @@ class AnalysisProcessor(object):
         self.n = -1
         self.flatten_results = False
         self.preprocess_list = []
+        self.dataset_name = None
 
     def __call__(self, dataset_file, dataset_name=None, ):
         return self.analyze_images(dataset_file, n=self.n)
@@ -631,6 +632,8 @@ class AnalysisProcessor(object):
         results = {}
         hf = h5py.File(fname, "r")
         self.run = hf.keys()[-1]  # find a better way
+        if self.dataset_name is None:
+            raise RuntimeError("Please provide a dataset name using the `set_sacla_dataset` method!")
         dataset = hf[self.run + "/" + self.dataset_name]
         tags_list = hf[self.run + "/event_info/tag_number_list"].value
         
@@ -656,7 +659,7 @@ class AnalysisProcessor(object):
                     analysis.temp_arguments["image_dtype"] = image.dtype
                     break
                 except:
-                    print sys.exc_info()
+                    #print sys.exc_info()
                     pass
             
         # loop on tags
