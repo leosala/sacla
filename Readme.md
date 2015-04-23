@@ -56,6 +56,11 @@ sys.path.append(SACLA_LIB)
 import utilities as ut
 ```
 
+Before using the code for the first time, there are some Cython libraries that need to be compiled first. Please go into the `utilities` directory and execute:
+
+```
+./compile_cython.sh
+```
 
 
 
