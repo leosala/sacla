@@ -5,6 +5,36 @@ Before using go to utilities folder and execute `compile_cython.sh` to compile t
 
 **Code is provided without any guarantee**
 
+# Installation
+
+## Python environment (Linux)
+
+The suggested way to have a fully functional and updated Python environment is to use the Anaconda Python Distribution (https://store.continuum.io/cshop/anaconda/). Download it, install it in some local directory `<anaconda_dir>`, and then export the new `PATH`:
+
+```
+export PATH=<anaconda_dir>/bin:${PATH}'
+```
+
+When starting `ipython`, you should then get something like:
+
+```
+$ ipython
+Python 2.7.9 |Continuum Analytics, Inc.| (default, Mar  9 2015, 16:20:48) 
+Type "copyright", "credits" or "license" for more information.
+
+IPython 2.2.0 -- An enhanced Interactive Python.
+Anaconda is brought to you by Continuum Analytics.
+Please check out: http://continuum.io/thanks and https://binstar.org
+?         -> Introduction and overview of IPython's features.
+%quickref -> Quick reference.
+help      -> Python's own help system.
+object?   -> Details about 'object', use 'object??' for extra details.
+
+In [1]: 
+```
+
+## Getting this code
+
 # Examples
 ## Adding DAQ information to DataConvert3 hdf5 files
 

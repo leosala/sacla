@@ -7,21 +7,24 @@ It also adds information gathered using syncdaq_get
 
 import h5py
 import numpy as np
-from sys import argv, exit
+import sys
+import os
 from time import time
 import pandas as pd
 
 # Converting DAQ quantities
-import beamtime_converter_201406XX as btc
+sys.path.append( os.environ["PWD"]+"/../" )
+#import utilities as ut
+import utilities.beamtime_converter_201406XX as btc
 
-if len(argv) != 3:
-    print "USAGE: ", argv[0], "infile.h5 outfile.h5"
+if len(sys.argv) != 3:
+    print "USAGE: ", sys.argv[0], "infile.h5 outfile.h5"
     exit(-1)
 
 start_t = time()
 
-INFILE = argv[1]
-OUTFILE = argv[2]
+INFILE = sys.argv[1]
+OUTFILE = sys.argv[2]
 
 # MPCCD can be detector_2d_1 or 9, depending if Octal was in or not...
 SELECT_DETECTORS = ["MPCCD-1N0-M01-001"]
@@ -140,28 +143,46 @@ def convert_sacla_file(f, fout, compress=""):
 
 
 if __name__ == "__main__":
+    print INFILE
+
+    if INFILE != OUTFILE:
+        from shutil import copyfile
+        copyfile(INFILE, OUTFILE)
+    #sys.exit()
+
     f = h5py.File(INFILE, "r")
-    fout = h5py.File(OUTFILE, "w")
+    fout = h5py.File(OUTFILE, "a")
     #add_files_dir = "/home/sala/Work/Data/Sacla/DAQ/timbvd/"
-    add_files_dir = "/media/sala/Elements/Data/Sacla/DAQ/timbvd/"
+    #add_files_dir = "/media/sala/Elements/Data/Sacla/DAQ/timbvd/"
+    add_files_dir = "/swissfel/photonics/data/2014-06-11_SACLA_ES2/DAQ/timbvd/"
 
     # this step can be avoided, if you want to keep original SACLA data file structure
-    convert_sacla_file(f, fout)
+    #convert_sacla_file(f, fout)
     #convert_sacla_file(f, fout, compress="lzf")
+
+    
 
     # Add information from syncdaq_get into the HDF5 file produced by DataConvert3
     daq_info = {}
     daq_info["delay"] = {"fname": "Delays.txt", "units": "ps"}
     daq_info["energy"] = {"fname": "Mono.txt", "units": "eV"}
     daq_info["x_shut"] = {"fname": "Xshut.txt", "units": "bool"}
-    daq_info["x_stat"] = {"fname": "Xstat.txt", "units": "bool"}
+    daq_info["x_status"] = {"fname": "Xstat.txt", "units": "bool"}
     daq_info["laser_on"] = {"fname": "LaserOn.txt", "units": "bool"}
     daq_info["bl2_I0mon_up"] = {"fname": "X2Up.txt", "units": "V"}
-    daq_info["bl2_I0mon_down"] = {"fname": "X2Up.txt", "units": "V"}
+    daq_info["bl2_I0mon_down"] = {"fname": "X2Down.txt", "units": "V"}
     daq_info["bl2_I0mon_right"] = {"fname": "X2Right.txt", "units": "V"}
     daq_info["bl2_I0mon_left"] = {"fname": "X2Left.txt", "units": "V"}
-    daq_info["bl3_apd"] = {"fname": "APD.txt", "units": "V"}
+    daq_info["johann_apd"] = {"fname": "APD.txt", "units": "V"}
     daq_info["johann_theta"] = {"fname": "Johann.txt", "units": "pulse"}
+    daq_info["johann_trans"] = {"fname": "APD_trans.txt", "units": "V"}
+
+    daq_info["Trans_PD2"] = {"fname": "PD.txt", "units": "V"}
+    daq_info["TFY_PD9"] = {"fname": "PD9.txt", "units": "V"}
+    daq_info["I0up_PD3"] = {"fname": "X41.txt", "units": "V"}
+    daq_info["I0down_PD4"] = {"fname": "X42.txt", "units": "V"}
+    daq_info["laserpos_h_M27"] = {"fname": "M27.txt", "units": "pulse"}
+    daq_info["laserpos_v_M28"] = {"fname": "M28.txt", "units": "pulse"}
 
     run_list = []
     for k in f.keys():
@@ -169,14 +190,12 @@ if __name__ == "__main__":
             run_list.append(k)
 
     for dname, v in daq_info.iteritems():
-        print dname
         df = pd.read_csv(add_files_dir + v["fname"], header=0, names=["tag", "value"], index_col="tag", )
 
         for r in run_list:
             tags = f[str(r) + "/event_info/tag_number_list"]
             red_df = df.loc[tags[0]:tags[-1]]
             conv_df = btc.convert(dname, red_df[:])
-            print conv_df[0], conv_df.dtype
             dt = np.float
             if v["units"] == "bool" or v["units"] == "pulse":
                 dt = np.int
