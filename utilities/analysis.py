@@ -310,6 +310,9 @@ def image_get_mean_std_results(results, temp):
     results: dict
         Dictionaries containing results and temporary variables, to be used internally by AnalysisProcessor. Result keys are 'images_mean' and 'images_std', which are the average and the standard deviation, respectively.
     """
+    if not temp.has_key("sum"):
+        return results        
+
     mean = temp["sum"] / temp["current_entry"]
     std = (temp["sum2"] / temp["current_entry"]) - mean * mean
     std = np.sqrt(std)
@@ -618,7 +621,7 @@ class AnalysisProcessor(object):
             print "[INFO] Setting a new dataset, removing stored preprocess functions. To overcome this, use remove_preprocess=False"
             self.remove_preprocess()
         
-    def analyze_images(self, fname, n=-1):
+    def analyze_images(self, fname, n=-1, mask=None):
         """
         Executes a loop, where the registered functions are applied to all the images
         
@@ -628,6 +631,8 @@ class AnalysisProcessor(object):
             Name of HDF5 Sacla file to analyze
         n : int
             Number of events to be analyzed. If -1, then all events will be analyzed.
+        mask : bool list
+            Boolean mask to be applied to tags list.
         """
         results = {}
         hf = h5py.File(fname, "r")
@@ -635,8 +640,10 @@ class AnalysisProcessor(object):
         if self.dataset_name is None:
             raise RuntimeError("Please provide a dataset name using the `set_sacla_dataset` method!")
         dataset = hf[self.run + "/" + self.dataset_name]
-        tags_list = hf[self.run + "/event_info/tag_number_list"].value
-        
+        if mask is not None:
+            tags_list = hf[self.run + "/event_info/tag_number_list"].value[mask]
+        else:
+            tags_list = hf[self.run + "/event_info/tag_number_list"].value
         n_images = len(tags_list)
         if n != -1:
             if n < len(tags_list):
