@@ -495,8 +495,8 @@ class AnalysisProcessor(object):
         self.preprocess_list = []
         self.dataset_name = None
 
-    def __call__(self, dataset_file, dataset_name=None, ):
-        return self.analyze_images(dataset_file, n=self.n)
+    def __call__(self, dataset_file, n=-1, tags=None ):
+        return self.analyze_images(dataset_file, n=n, tags=tags)
 
     def add_preprocess(self, f, label="", args={}):
         """
@@ -637,21 +637,34 @@ class AnalysisProcessor(object):
             dictionary containing the results.
         """
         results = {}
+
+        if tags == []:
+            print "WARNING: emtpy tags list, returning nothing..."
+            return results
+
         hf = h5py.File(fname, "r")
+
         self.run = hf.keys()[-1]  # find a better way
         if self.dataset_name is None:
+            hf.close()
             raise RuntimeError("Please provide a dataset name using the `set_sacla_dataset` method!")
         dataset = hf[self.run + "/" + self.dataset_name]
-        tags_list = hf[self.run + "/event_info/tag_number_list"].value
+
+        try:
+            tags_list = hf[self.run + "/event_info/tag_number_list"].value
+        except:
+            print sys.exc_info()
+
+        ### TODO fix this
         n_images = len(tags_list)
         if n != -1:
             if n < len(tags_list):
                 n_images = n
-          
                 
         for analysis in self.analyses:
             analysis.results = {}
             analysis.results["n_entries"] = n_images
+            analysis.results["filename"] = fname
             analysis.temp_arguments = {}
             analysis.temp_arguments["current_entry"] = 0
             analysis.temp_arguments["image_shape"] = None
@@ -668,11 +681,15 @@ class AnalysisProcessor(object):
                     analysis.temp_arguments["image_dtype"] = image.dtype
                     break
                 except:
-                    #print sys.exc_info()
+                    print sys.exc_info()
                     pass
             
         # loop on tags
         for tag_i, tag in enumerate(tags_list[0:n_images]):
+            if tags is not None:
+                if tag not in tags:
+                    continue
+
             try:
                 image = dataset["tag_" + str(tag) + "/detector_data"][:]
                 if self.f_for_all_images != {}:
