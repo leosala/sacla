@@ -363,7 +363,7 @@ def image_set_roi(image, roi=None):
 
     Parameters
     ----------
-    imagee: Numpy array
+    image: Numpy array
         the input array image
     roi: array
         the ROI selection, as [[X_lo, X_hi], [Y_lo, Y_hi]]
@@ -604,9 +604,7 @@ class AnalysisProcessor(object):
                     self.analyses.remove(an)
 
     def set_sacla_dataset(self, dataset_name, remove_preprocess=True):
-        """
-        Set the name for the SACLA dataset to be analyzed
-        
+        """Set the name for the SACLA dataset to be analyzed        
         Parameters
         ----------
         dataset_name : string
@@ -621,9 +619,8 @@ class AnalysisProcessor(object):
             print "[INFO] Setting a new dataset, removing stored preprocess functions. To overcome this, use remove_preprocess=False"
             self.remove_preprocess()
         
-    def analyze_images(self, fname, n=-1, mask=None, tags=None):
-        """
-        Executes a loop, where the registered functions are applied to all the images
+    def analyze_images(self, fname, n=-1, tags=None):
+        """Executes a loop, where the registered functions are applied to all the images
         
         Parameters
         ----------
@@ -631,8 +628,13 @@ class AnalysisProcessor(object):
             Name of HDF5 Sacla file to analyze
         n : int
             Number of events to be analyzed. If -1, then all events will be analyzed.
-        mask : bool list
-            Boolean mask to be applied to tags list.
+        tags : int list
+            List of tags to be analyzed.
+            
+        Returns
+        -------
+        results: dict
+            dictionary containing the results.
         """
         results = {}
         hf = h5py.File(fname, "r")
@@ -640,10 +642,7 @@ class AnalysisProcessor(object):
         if self.dataset_name is None:
             raise RuntimeError("Please provide a dataset name using the `set_sacla_dataset` method!")
         dataset = hf[self.run + "/" + self.dataset_name]
-        if mask is not None:
-            tags_list = hf[self.run + "/event_info/tag_number_list"].value[mask]
-        else:
-            tags_list = hf[self.run + "/event_info/tag_number_list"].value
+        tags_list = hf[self.run + "/event_info/tag_number_list"].value
         n_images = len(tags_list)
         if n != -1:
             if n < len(tags_list):
@@ -694,17 +693,13 @@ class AnalysisProcessor(object):
 
             for analysis in self.analyses:
                 analysis.results, analysis.temporary_arguments = analysis.function(analysis.results, analysis.temp_arguments, image, **analysis.arguments)
-            #print tag_i            
-            #if analysis.name == "image_get_spectra":
-            #        print analysis.results["spectra"][analysis.results["spectra"] > 1000]
+            
         for analysis in self.analyses:
             if analysis.post_analysis_function is not None:
                 analysis.results = analysis.post_analysis_function(analysis.results, analysis.temp_arguments)
             if self.flatten_results:
                 results.update(analysis.results)
             else:
-                #if analysis.name == "image_get_spectra":
-                #    print analysis.results["spectra"][analysis.results["spectra"] > 1000]
                 results[analysis.name] = analysis.results
         self.results = results
         hf.close()
