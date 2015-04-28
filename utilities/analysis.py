@@ -621,7 +621,7 @@ class AnalysisProcessor(object):
             print "[INFO] Setting a new dataset, removing stored preprocess functions. To overcome this, use remove_preprocess=False"
             self.remove_preprocess()
         
-    def analyze_images(self, fname, n=-1, mask=None):
+    def analyze_images(self, fname, n=-1, mask=None, tags=None):
         """
         Executes a loop, where the registered functions are applied to all the images
         
@@ -660,6 +660,9 @@ class AnalysisProcessor(object):
 
             # first loop to determine the image size... probably it can be done differently
             for tag in tags_list[0:n_images]:
+                if tags is not None:                
+                    if tag not in tags:
+                        continue
                 try:
                     image = dataset["tag_" + str(tag) + "/detector_data"][:]
                     analysis.temp_arguments["image_shape"] = image.shape
