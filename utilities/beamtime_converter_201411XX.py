@@ -40,6 +40,8 @@ def get_energy_from_theta(theta_position):
     """
     Translate the monochromator theta position in keV
     """
+    if theta_position < 0:
+        return -99
     try:
         theta_position = float(theta_position.replace("pulse", ""))
     except:
