@@ -1,24 +1,18 @@
 # # Sacla - RIXS example
 # 
-# In this notebook, some simple code is provided as an example to produce some Resonant Inelastic X-Ray Scattering (RIXS) maps.
+# In this example, some simple code is provided as an example to produce some Resonant Inelastic X-Ray Scattering (RIXS) maps.
 # 
 # The basic steps to be performed are:
 # - select a suitable set of runs
 # - scan for finding the scanned monochromator energies
 # - produce the spectra for each energy, and the on/off maps
 # 
-# *The aim of this tutorial is not to produce extremely efficient code, but code as simple and as fast as possible to support the data quality evaluation during beamtime and after.*
+# *The aim of this tutorial is not to produce extremely efficient code, but code as simple and as fast as possible 
+# to support the data quality evaluation during beamtime and after.*
 # 
-# We'll start with the usual set of imports:
+
 
 import numpy as np
-import matplotlib as mpl
-# loading customized matplotlib style. If not available, it does nothing
-#try:
-#    mpl.rcParams = mpl.rc_params_from_file("/swissfel/photonics/sala/sacla/utilities/matplotlibrc")
-#except:
-#    pass
-
 import matplotlib.pyplot as plt
 import sys
 import h5py
@@ -32,22 +26,13 @@ import utilities as ut
 # specific converters for the 2014-11 data taking. These should be customized per each beamtime!
 from utilities import beamtime_converter_201411XX as sacla_converter
 
-
-def image_subtract_image(image, image2):
-    return image - image2
-
 # directory containing ROI'd hdf5 files
 DIR = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/hdf5/"
 dark_file = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/dark/dark_256635.h5"
 
-# runs to be analyzed
-#runs = [str(x) for x in range(258840, 258852)]
-#runs = [str(x) for x in range(258850, 258851)]
-
 # Then, we define:
 # * the SACLA datasets
 # * $t_0$
-# * the runs to be analyzed
 
 # Define SACLA quantities - they can change from beamtime to beamtime
 daq_labels = {}
@@ -68,10 +53,6 @@ t0 = 220.86
 
 
 def get_data_df(dataset_name, runs, selection=""):
-    # In principle, a single run can contain *multiple mono settings*, so we need to load data from all the runs, and the group them by mono energy. `Pandas` can help us with that...
-    # 
-    # We load all data from files, place it in a `DataFrame`, and then add some useful derived quantities. At last, we use `tags` as index for the `DataFrame`
-
     # create a DataFrame
     df_orig = pd.DataFrame(columns=daq_labels.keys(), )
 
@@ -122,7 +103,6 @@ def get_data_df(dataset_name, runs, selection=""):
     df_orig = df_orig.set_index("tags")
 
     # filtering out garbage
-    #df = df_orig[is_data]
     if selection != "":
         df = df_orig.query(selection)
     else:
@@ -145,7 +125,6 @@ def get_data_df(dataset_name, runs, selection=""):
 
 def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
     # In principle, a single run can contain *multiple mono settings*, so we need to load data from all the runs, and the group them by mono energy. `Pandas` can help us with that...
-    # 
     # We load all data from files, place it in a `DataFrame`, and then add some useful derived quantities. At last, we use `tags` as index for the `DataFrame`
 
     # label for ascii output dump
@@ -157,8 +136,7 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
         sys.exit(-1)
 
     print "\nAvailable energy settings"
-    print df.photon_mono_energy.unique()
-    print ""
+    print df.photon_mono_energy.unique(), "\n"
 
     # Now we can run the analysis. For each energy value and each run, a *list of tags* is created, 
     # such that events have the same mono energy and they are part of the same run (as each run is in a separated file). 
@@ -166,9 +144,7 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
 
     # the mono energies contained in the files
     energies_list = sorted(df.photon_mono_energy.unique().tolist())
-
-    # dark
-    dark = h5py.File(dark_file, "r")["dark1"][:]
+    fnames = [DIR + str(run) +"_roi.h5" for run in runs]
 
     # The AnalysisProcessor
     an = ut.analysis.AnalysisProcessor()
@@ -180,7 +156,6 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
     an.add_analysis("image_get_mean_std", args={'thr_low': thr_low})
     bins = np.arange(-150, 1000, 5)
     an.add_analysis("image_get_histo_adu", args={'bins': bins})
-
     an.set_sacla_dataset(dataset_name)
 
     # run the analysis
@@ -188,34 +163,24 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
     spectrum_on = None
     spectrum_off = None
 
-    fnames = [DIR + str(run) +"_roi.h5" for run in runs]
-
-    # To save some time, we can try a trivial parallelization on the analysis process, using the `multiprocessing` module. On a busy multicore system, this should take ~2:00 (compared to ~5:00 with the simple loop) minutes with 4 or more parallel jobs.  
-    # One difference w.t.r. of the simple loop is that in this case we are calling `an`, and not `an.analyze_images`: this is because of some technicalities of the `multiprocessing` module regarding pickling and unpickling, which are of no interest here. Just keep in mind that *for an AnalysisProcessor object calling* `an()` *or* `an.analyze_images()` *is the same*.
-
+    # multiprocessing import
     from multiprocessing import Pool
     from multiprocessing.pool import ApplyResult
 
-    # initialization of the RIXS maps
-    rixs_map_on = np.zeros((len(energies_list), 1024))
-    rixs_map_off = np.zeros((len(energies_list), 1024))
-    rixs_map_on_std = np.zeros((len(energies_list), 1024))
-    rixs_map_off_std = np.zeros((len(energies_list), 1024))
+    # initialization of the RIXS maps. Element 0 is laser_on_ element 1 is laser_off
+    rixs_map = [np.zeros((len(energies_list), 1024)), np.zeros((len(energies_list), 1024))]
+    rixs_map_std = [np.zeros((len(energies_list), 1024)), np.zeros((len(energies_list), 1024))]
 
     n_events = -1
-    spectrum_on = None
-    spectrum_off = None
-
+    spectrum = [None, None]
     total_results = {}
-
-    events_per_energy_on = {}
-    events_per_energy_off = {}
+    events_per_energy = [{}, {}]
 
     for i, energy in enumerate(energies_list):
         async_results = []  # list for results
 
-        events_per_energy_on[energy] = 0
-        events_per_energy_off[energy] = 0
+        events_per_energy[0][energy] = 0
+        events_per_energy[1][energy] = 0
         energy_masks = []
         # creating the pool
         pool = Pool(processes=8)
@@ -244,42 +209,33 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
 
             df_run = df[df.run == run]
             energy_mask = energy_masks[j]
+            laser_masks = [None, None]
             if n_events != -1:
-                laseron_mask = energy_mask.is_laser.values[:n_events]
+                laser_masks[0] = energy_mask.is_laser.values[:n_events]
             else:
-                laseron_mask = energy_mask.is_laser.values
+                laser_masks[0] = energy_mask.is_laser.values
+            laser_masks[1] = ~laser_masks[0]
 
-            norm = np.count_nonzero(~np.isnan(results[j]["spectra"][laseron_mask][:, 0]))
-            events_per_energy_on[energy] += norm
-            spectrum_on = np.nansum((results[j]["spectra"][laseron_mask].T / df_run[laseron_mask].I0.values).T, 
-                                    axis=0)
-            spectrum_on_events = np.nansum(results[j]["spectra"][laseron_mask], axis=0)
-            rixs_map_on[energies_list.index(energy)] += spectrum_on
-            rixs_map_on_std[energies_list.index(energy)] += spectrum_on_events
+            for laser in [0, 1]:
+                norm = np.count_nonzero(~np.isnan(results[j]["spectra"][laser_masks[laser]][:, 0]))
+                events_per_energy[laser][energy] += norm
+                spectrum = np.nansum((results[j]["spectra"][laser_masks[laser]].T / df_run[laser_masks[laser]].I0.values).T, axis=0)
+                spectrum_events = np.nansum(results[j]["spectra"][laser_masks[laser]], axis=0)
+                rixs_map[laser][energies_list.index(energy)] += spectrum
+                rixs_map_std[laser][energies_list.index(energy)] += spectrum_events
             
-            norm = np.count_nonzero(~np.isnan(results[j]["spectra"][~laseron_mask][:, 0]))
-            events_per_energy_off[energy] += norm
-            spectrum_off = np.nansum((results[j]["spectra"][~laseron_mask].T / df_run[~laseron_mask].I0.values).T, 
-                                     axis=0)
-            spectrum_off_events = np.nansum(results[j]["spectra"][~laseron_mask], axis=0)
-            rixs_map_off[energies_list.index(energy)] += spectrum_off
-            rixs_map_off_std[energies_list.index(energy)] += spectrum_off_events
- 
             total_results[run][energy] = {}
             total_results[run][energy]["results"] = results[j]
-            total_results[run][energy]["laser_on"] = laseron_mask
-            total_results[run][energy]["events"] = norm
+            total_results[run][energy]["laser_on"] = laser_masks[0]
 
-    for energy in events_per_energy_on.keys():
-        rixs_map_on[energies_list.index(energy)] /= events_per_energy_on[energy]
-        rixs_map_off[energies_list.index(energy)] /= events_per_energy_off[energy]
+    for laser in [0, 1]:
+        for energy in events_per_energy[0].keys():
+            rixs_map[laser][energies_list.index(energy)] /= events_per_energy[laser][energy]
     
-    rixs_map_on_std = rixs_map_on / np.sqrt(rixs_map_on_std)
-    rixs_map_off_std = rixs_map_off / np.sqrt(rixs_map_off_std)
-    np.savetxt("%s_map_on_%dps.txt" % (out_label, delay), rixs_map_on)
-    np.savetxt("%s_map_off_%dps.txt" % (out_label, delay), rixs_map_off)
+        rixs_map_std[laser] = rixs_map[laser] / np.sqrt(rixs_map_std[laser])
+        np.savetxt("%s_map_%s_%dps.txt" % (out_label, "on" if laser==0 else "off", delay), rixs_map[laser])
 
-    return rixs_map_on, rixs_map_off, rixs_map_on_std, rixs_map_off_std, total_results
+    return rixs_map, rixs_map_std, total_results
 
 
 def get_rixs_spectra(dataset_name, runs, thr_low=0, thr_hi=999999, selection=""):
@@ -290,16 +246,15 @@ def get_rixs_spectra(dataset_name, runs, thr_low=0, thr_hi=999999, selection="")
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print "USAGE: %s initial_run_number final_run_number" % sys.argv[0]
-        sys.exit(-1)
+    else:
+        run_i = int(sys.argv[1])
+        run_f = int(sys.argv[2])
+        runs = [str(x) for x in np.arange(run_i, run_f + 1)]
 
-    run_i = int(sys.argv[1])
-    run_f = int(sys.argv[2])
-    runs = [str(x) for x in np.arange(run_i, run_f + 1)]
+        sel = "(x_shut == 1) & (x_status == 1) & (I0_up > 0.01) & (I0_down > 0.01) & (ND > -1) & (photon_mono_energy) > 9"
+        rixs_map, rixs_map_std, total_results = get_rixs_spectra("detector_2d_1", runs, thr_low=70, thr_hi=170, selection=sel)
 
-    sel = "(x_shut == 1) & (x_status == 1) & (I0_up > 0.01) & (I0_down > 0.01) & (ND > -1) & (photon_mono_energy) > 9"
-    rixs_map_on, rixs_map_off, rixs_map_on_std, rixs_map_off_std, total_results = get_rixs_spectra("detector_2d_1", runs, thr_low=70, thr_hi=170, selection=sel)
-
-    plt.figure()
-    plt.imshow(rixs_map_on - rixs_map_off, aspect="auto", vmin=-10, vmax=10)
-    plt.colorbar()
-    plt.show()
+        #plt.figure()
+        #plt.imshow(rixs_map[0] - rixs_map[1], aspect="auto", vmin=-10, vmax=10)
+        #plt.colorbar()
+        #plt.show()
