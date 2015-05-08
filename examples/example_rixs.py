@@ -19,7 +19,8 @@ import h5py
 import pandas as pd
 
 # Loading SACLA tools 
-SACLA_LIB = "../"
+#SACLA_LIB = "../"
+SACLA_LIB = "/swissfel/photonics/software/python-code/sacla/"
 sys.path.append(SACLA_LIB)
 import utilities as ut
 
