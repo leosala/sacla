@@ -1,31 +1,26 @@
 # # Sacla - RIXS example
 # 
-# In this notebook, some simple code is provided as an example to produce some Resonant Inelastic X-Ray Scattering (RIXS) maps.
+# In this example, some simple code is provided as an example to produce some Resonant Inelastic X-Ray Scattering (RIXS) maps.
 # 
 # The basic steps to be performed are:
 # - select a suitable set of runs
 # - scan for finding the scanned monochromator energies
 # - produce the spectra for each energy, and the on/off maps
 # 
-# *The aim of this tutorial is not to produce extremely efficient code, but code as simple and as fast as possible to support the data quality evaluation during beamtime and after.*
+# *The aim of this tutorial is not to produce extremely efficient code, but code as simple and as fast as possible 
+# to support the data quality evaluation during beamtime and after.*
 # 
-# We'll start with the usual set of imports:
+
 
 import numpy as np
-import matplotlib as mpl
-# loading customized matplotlib style. If not available, it does nothing
-#try:
-#    mpl.rcParams = mpl.rc_params_from_file("/swissfel/photonics/sala/sacla/utilities/matplotlibrc")
-#except:
-#    pass
-
 import matplotlib.pyplot as plt
 import sys
 import h5py
 import pandas as pd
 
 # Loading SACLA tools 
-SACLA_LIB = "../"
+#SACLA_LIB = "../"
+SACLA_LIB = "/swissfel/photonics/software/python-code/sacla/"
 sys.path.append(SACLA_LIB)
 import utilities as ut
 
@@ -34,24 +29,11 @@ from utilities import beamtime_converter_201411XX as sacla_converter
 
 # directory containing ROI'd hdf5 files
 DIR = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/hdf5/"
-
-# you want the final plot?
-plot_figs = True
-
-# runs to be analyzed
-runs = [str(x) for x in range(258874, 258884)]
-# label for ascii output dump
-out_label = "rixs_" + runs[0] + "-" + runs[-1]
-
-# set the dataset, and the ADU threshold
-dataset_name = "detector_2d_1"
-thr = 70
-
+dark_file = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/dark/dark_256635.h5"
 
 # Then, we define:
 # * the SACLA datasets
 # * $t_0$
-# * the runs to be analyzed
 
 # Define SACLA quantities - they can change from beamtime to beamtime
 daq_labels = {}
@@ -71,229 +53,209 @@ daq_labels["tags"] = "event_info/tag_number_list"
 t0 = 220.86
 
 
-# In principle, a single run can contain *multiple mono settings*, so we need to load data from all the runs, and the group them by mono energy. `Pandas` can help us with that...
-# 
-# We load all data from files, place it in a `DataFrame`, and then add some useful derived quantities. At last, we use `tags` as index for the `DataFrame`
+def get_data_df(dataset_name, runs, selection=""):
+    # create a DataFrame
+    df_orig = pd.DataFrame(columns=daq_labels.keys(), )
 
-# create a DataFrame
-df_orig = pd.DataFrame(columns=daq_labels.keys(), )
+    failed_runs = []
+    runs = sorted(runs)
+    for run in runs:
+        mydict = {}  # temporary dict, where to store data
+        fname = DIR + str(run) +"_roi.h5"  # the file name
+        try:
+            f = h5py.File(fname, "r")
+            main_dset = f["run_" + str(run)]
+        except:
+            print "Error loading run %s: %s" % (run, sys.exc_info[1])
+            failed_runs.append(run)
+            pass
+        # Loading data from the specified datasets
+        for k, v in daq_labels.iteritems():
+            if k == "delay":
+                # delays are in motor steps
+                mydict[k] = sacla_converter.convert("delay", main_dset[v][:], t0=t0)
+            elif k == "photon_mono_energy":
+                # mono energy settings are in motor steps
+                mydict[k] = sacla_converter.convert("energy", main_dset[v][:])
+            elif k == "photon_sase_energy":
+                mydict[k + "_mean"] = main_dset[v][:].mean()
+            else:
+                mydict[k] = main_dset[v][:]
 
-failed_runs = []
-runs = sorted(runs)
-for run in runs:
-    mydict = {}  # temporary dict, where to store data
-    fname = DIR + str(run) +"_roi.h5"  # the file name
-    try:
-        f = h5py.File(fname, "r")
-        main_dset = f["run_" + str(run)]
-    except:
-        print "Error loading run %s: %s" % (run, sys.exc_info[1])
-        failed_runs.append(run)
-        pass
-    # Loading data from the specified datasets
-    for k, v in daq_labels.iteritems():
-        if k == "delay":
-            # delays are in motor steps
-            mydict[k] = sacla_converter.convert("delay", main_dset[v][:], t0=t0)
-        elif k == "photon_mono_energy":
-            # mono energy settings are in motor steps
-            mydict[k] = sacla_converter.convert("energy", main_dset[v][:])
-        elif k == "photon_sase_energy":
-            mydict[k + "_mean"] = main_dset[v][:].mean()
-        else:
-            mydict[k] = main_dset[v][:]
+        tmp_df = pd.DataFrame(data=mydict)
+        tmp_df["run"] = run
+        # Append the data to the dataframe
+        df_orig = df_orig.append(tmp_df)
+
+    # removing failed runs
+    for r in failed_runs:
+        runs.remove(r)
+
+    # round mono energy and delay
+    df_orig.photon_mono_energy = np.round(df_orig.photon_mono_energy.values, decimals=4)
+    df_orig.delay = np.round(df_orig.delay.values, decimals=1)
+
+    # create total I0 and absorption coefficients
+    df_orig["I0"] = df_orig.I0_up + df_orig.I0_down
+    df_orig["absorp"] = df_orig.TFY / df_orig.I0
+    df_orig["is_laser"] = (df_orig['laser_status'] == 1)
+
+    # set tag number as index
+    df_orig = df_orig.set_index("tags")
+
+    # filtering out garbage
+    if selection != "":
+        df = df_orig.query(selection)
+    else:
+        df = df_orig
+
+    # print selection efficiency
+    print "\nSelection efficiency"
+    sel_eff = pd.DataFrame( {"Total":df_orig.groupby("run").count().ND, 
+                             "Selected": df.groupby("run").count().ND, 
+                             "Eff.": df.groupby("run").count().ND / df_orig.groupby("run").count().ND})
+    print sel_eff
+
+    # checking delay settings
+    g = df.groupby(['run', 'delay', 'photon_mono_energy'])
+    print "\nEvents per run and delay settings"
+    print g.count().TFY
     
-    tmp_df = pd.DataFrame(data=mydict)
-    tmp_df["run"] = run
-    # Append the data to the dataframe
-    df_orig = df_orig.append(tmp_df)
-
-# removing failed runs
-for r in failed_runs:
-    runs.remove(r)
-
-# round mono energy and delay
-df_orig.photon_mono_energy = np.round(df_orig.photon_mono_energy.values, decimals=4)
-df_orig.delay = np.round(df_orig.delay.values, decimals=1)
-
-# create total I0 and absorption coefficients
-df_orig["I0"] = df_orig.I0_up + df_orig.I0_down
-df_orig["absorp"] = df_orig.TFY / df_orig.I0
-df_orig["is_laser"] = (df_orig['laser_status'] == 1)
-
-# set tag number as index
-df_orig = df_orig.set_index("tags")
-
-# The last preliminary step is to filter out garbage data. As a bonus, you can also find out at which `tag` the mono scan setting changed:
-# preparing the is_data mask
-is_data = (df_orig.x_shut == 1) & (df_orig.x_status == 1) & (df_orig.photon_mono_energy > 9.6)
-is_data = is_data & (df_orig.I0_up > 0.01) & (df_orig.I0_down > 0.01) & (df_orig.ND > -1)
-
-# filtering out garbage
-df = df_orig[is_data]
-
-# print selection efficiency
-print "\nSelection efficiency"
-sel_eff = pd.DataFrame( {"Total":df_orig.groupby("run").count().ND, 
-                         "Selected": df.groupby("run").count().ND, 
-                         "Eff.": df.groupby("run").count().ND / df_orig.groupby("run").count().ND})
-print sel_eff
-
-# checking delay settings
-g = df.groupby(['run', 'delay'])
-print "\nEvents per run and delay settings"
-print g.count().TFY
-
-delay = df.delay.unique()
-if len(delay) > 1:
-    print "More than one delay settings in the selected run range, exiting"
-    sys.exit(-1)
+    return df, runs
 
 
-print "\nAvailable energy settings"
-print df.photon_mono_energy.unique()
-print ""
+def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
+    # In principle, a single run can contain *multiple mono settings*, so we need to load data from all the runs, and the group them by mono energy. `Pandas` can help us with that...
+    # We load all data from files, place it in a `DataFrame`, and then add some useful derived quantities. At last, we use `tags` as index for the `DataFrame`
 
-# getting quantities when a variable changes
-#tmp = df.photon_mono_energy.values[1:] - df.photon_mono_energy.values[0:-1]
-#mask =tmp!=0
-#mask = np.insert(mask, 0, True, )
-# this is where it changes
-#print df[mask].index.tolist()
+    # label for ascii output dump
+    out_label = "rixs_" + runs[0] + "-" + runs[-1]
 
+    delay = df.delay.unique()
+    if len(delay) > 1:
+        print "More than one delay settings in the selected run range, exiting"
+        sys.exit(-1)
 
-# Now we can run the analysis. For each energy value and each run, a *list of tags* is created, such that events hage the same mono energy and they are part of the same run (as each run is in a separated file). For each of these lists, we run the `AnalysisProcessor` and create the required spectra, for laser on and off. 
+    print "\nAvailable energy settings"
+    print df.photon_mono_energy.unique(), "\n"
 
-# the mono energies contained in the files
-energies_list = sorted(df.photon_mono_energy.unique().tolist())
+    # Now we can run the analysis. For each energy value and each run, a *list of tags* is created, 
+    # such that events have the same mono energy and they are part of the same run (as each run is in a separated file). 
+    # For each of these lists, we run the `AnalysisProcessor` and create the required spectra, for laser on and off. 
 
-# The AnalysisProcessor
-an = ut.analysis.AnalysisProcessor()
-# if you want a flat dict as a result
-an.flatten_results = True
+    # the mono energies contained in the files
+    energies_list = sorted(df.photon_mono_energy.unique().tolist())
+    fnames = [DIR + str(run) +"_roi.h5" for run in runs]
+
+    # The AnalysisProcessor
+    an = ut.analysis.AnalysisProcessor()
+    # if you want a flat dict as a result
+    an.flatten_results = True
+
+    # add analysis
+    an.add_analysis("image_get_spectra", args={'axis': 1, 'thr_low': thr_low, 'thr_hi': thr_hi})
+    an.add_analysis("image_get_mean_std", args={'thr_low': thr_low})
+    bins = np.arange(-150, 1000, 5)
+    an.add_analysis("image_get_histo_adu", args={'bins': bins})
+    an.set_sacla_dataset(dataset_name)
+
+    # run the analysis
+    n_events = -1
+    spectrum_on = None
+    spectrum_off = None
+
+    # multiprocessing import
+    from multiprocessing import Pool
+    from multiprocessing.pool import ApplyResult
+
+    # initialization of the RIXS maps. Element 0 is laser_on_ element 1 is laser_off
+    rixs_map = [np.zeros((len(energies_list), 1024)), np.zeros((len(energies_list), 1024))]
+    rixs_map_std = [np.zeros((len(energies_list), 1024)), np.zeros((len(energies_list), 1024))]
+
+    n_events = -1
+    spectrum = [None, None]
+    total_results = {}
+    events_per_energy = [{}, {}]
+
+    for i, energy in enumerate(energies_list):
+        async_results = []  # list for results
+
+        events_per_energy[0][energy] = 0
+        events_per_energy[1][energy] = 0
+        energy_masks = []
+        # creating the pool
+        pool = Pool(processes=8)
+        # looping on the runs
+        for j, run in enumerate(runs):
+            df_run = df[df.run == run]
+            energy_masks.append(df_run[df_run.photon_mono_energy == energy])
+            # apply the analysis 
+            async_results.append(pool.apply_async(an, (fnames[j], n_events, energy_masks[j].index.values)))
+
+        # closing the pool
+        pool.close()
+
+        # waiting for all results
+        results = [r.get() for r in async_results]
+        print "Got results for energy", energy
+
+        # producing the laser on/off maps
+        for j, run in enumerate(runs):
+
+            if not total_results.has_key(run):
+                total_results[run] = {}
+
+            if not results[j].has_key("spectra"):
+                continue
+
+            df_run = df[df.run == run]
+            energy_mask = energy_masks[j]
+            laser_masks = [None, None]
+            if n_events != -1:
+                laser_masks[0] = energy_mask.is_laser.values[:n_events]
+            else:
+                laser_masks[0] = energy_mask.is_laser.values
+            laser_masks[1] = ~laser_masks[0]
+
+            for laser in [0, 1]:
+                norm = np.count_nonzero(~np.isnan(results[j]["spectra"][laser_masks[laser]][:, 0]))
+                events_per_energy[laser][energy] += norm
+                spectrum = np.nansum((results[j]["spectra"][laser_masks[laser]].T / df_run[laser_masks[laser]].I0.values).T, axis=0)
+                spectrum_events = np.nansum(results[j]["spectra"][laser_masks[laser]], axis=0)
+                rixs_map[laser][energies_list.index(energy)] += spectrum
+                rixs_map_std[laser][energies_list.index(energy)] += spectrum_events
+            
+            total_results[run][energy] = {}
+            total_results[run][energy]["results"] = results[j]
+            total_results[run][energy]["laser_on"] = laser_masks[0]
+
+    for laser in [0, 1]:
+        for energy in events_per_energy[0].keys():
+            rixs_map[laser][energies_list.index(energy)] /= events_per_energy[laser][energy]
     
-# add analysis
-an.add_analysis("image_get_spectra", args={'axis': 1, })  #'thr_low': thr,})
-an.add_analysis("image_get_mean_std", )  #args={'thr_low': thr})
-#bins = np.arange(-150, 300, 5)
-#an.add_analysis("image_get_histo_adu", args={'bins': bins})
+        rixs_map_std[laser] = rixs_map[laser] / np.sqrt(rixs_map_std[laser])
+        np.savetxt("%s_map_%s_%dps.txt" % (out_label, "on" if laser==0 else "off", delay), rixs_map[laser])
 
-an.set_sacla_dataset(dataset_name)
-
-# add preprocess steps
-an.add_preprocess("image_set_thr", args={'thr_low': thr})
-        
-# run the analysis
-n_events = -1
-spectrum_on = None
-spectrum_off = None
-
-fnames = [DIR + str(run) +"_roi.h5" for run in runs]
+    return rixs_map, rixs_map_std, total_results
 
 
-# To save some time, we can try a trivial parallelization on the analysis process, using the `multiprocessing` module. On a busy multicore system, this should take ~2:00 (compared to ~5:00 with the simple loop) minutes with 4 or more parallel jobs.  
-# One difference w.t.r. of the simple loop is that in this case we are calling `an`, and not `an.analyze_images`: this is because of some technicalities of the `multiprocessing` module regarding pickling and unpickling, which are of no interest here. Just keep in mind that *for an AnalysisProcessor object calling* `an()` *or* `an.analyze_images()` *is the same*.
+def get_rixs_spectra(dataset_name, runs, thr_low=0, thr_hi=999999, selection=""):
+    df, runs = get_data_df(dataset_name, runs, selection=selection)
+    return compute_rixs_spectra(dataset_name, df, thr_low, thr_hi)
 
-from multiprocessing import Pool
-from multiprocessing.pool import ApplyResult
 
-# initialization of the RIXS maps
-rixs_map_on = np.zeros((len(energies_list), 1024))
-rixs_map_off = np.zeros((len(energies_list), 1024))
-rixs_map_on_std = np.zeros((len(energies_list), 1024))
-rixs_map_off_std = np.zeros((len(energies_list), 1024))
+if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print "USAGE: %s initial_run_number final_run_number" % sys.argv[0]
+    else:
+        run_i = int(sys.argv[1])
+        run_f = int(sys.argv[2])
+        runs = [str(x) for x in np.arange(run_i, run_f + 1)]
 
-n_events = -1
-spectrum_on = None
-spectrum_off = None
+        sel = "(x_shut == 1) & (x_status == 1) & (I0_up > 0.01) & (I0_down > 0.01) & (ND > -1) & (photon_mono_energy) > 9"
+        rixs_map, rixs_map_std, total_results = get_rixs_spectra("detector_2d_1", runs, thr_low=70, thr_hi=170, selection=sel)
 
-for i, energy in enumerate(energies_list):
-    async_results = []  # list for results
-
-    energy_masks = []
-    # creating the pool
-    pool = Pool(processes=8)
-    # looping on the runs
-    for j, run in enumerate(runs):
-        df_run = df[df.run == run]
-        energy_masks.append(df_run[df_run.photon_mono_energy == energy])
-        # apply the analysis 
-        async_results.append(pool.apply_async(an, (fnames[j], n_events, energy_masks[j].index.values)))
-
-    # closing the pool
-    pool.close()
-    
-    # waiting for all results
-    results = [r.get() for r in async_results]
-    print "Got results for energy", energy
-    
-    # producing the laser on/off maps
-    for j, run in enumerate(runs):
-        
-        if not results[j].has_key("spectra"):
-            continue
-
-        energy_mask = energy_masks[j]
-        laseron_mask = energy_mask.is_laser.values[:n_events]
-        spectrum_on = np.nansum(results[j]["spectra"][laseron_mask], axis=0)
-        rixs_map_on[energies_list.index(energy)] += spectrum_on
-        spectrum_off = np.nansum(results[j]["spectra"][~laseron_mask], axis=0)
-        rixs_map_off[energies_list.index(energy)] += spectrum_off
-        
-        # quadrature sums of Standard Deviations
-        spectrum_on_std = np.nanstd(results[j]["spectra"][laseron_mask], axis=0)
-        rixs_map_on_std[energies_list.index(energy)] += spectrum_on_std * spectrum_on_std
-        spectrum_off_std = np.nanstd(results[j]["spectra"][~laseron_mask], axis=0)
-        rixs_map_off_std[energies_list.index(energy)] += spectrum_off_std * spectrum_off_std
-
-np.savetxt("%s_map_on_%dps.txt" % (out_label, delay), rixs_map_on)
-np.savetxt("%s_map_off_%dps.txt" % (out_label, delay), rixs_map_off)
-
-if plot_figs:
-    #plt.figure()
-    f, (ax, ax1, ax2) = plt.subplots(1, 3, sharex=True, sharey=True)
-    imgplot = ax.imshow(rixs_map_off, 
-                        origin="lower",
-                        extent=(rixs_map_off.shape[0], rixs_map_off.shape[1], energies_list[0], energies_list[-1]),
-                        aspect="auto",
-                        #interpolation="nearest",
-                        cmap="bwr",
-                        )
-
-    ax.get_yaxis().set_major_formatter( mpl.ticker.FuncFormatter(lambda x, p: format(float(x), ',')))
-    plt.colorbar(imgplot)
-    ax.set_title("RIXS Off, delay=%dps" % delay)
-    ax.set_ylabel("Incoming energy (eV)")
-    
-    ax1 = plt.subplot(132)
-    imgplot = ax1.imshow(rixs_map_on, 
-                        origin="lower",
-                        extent=(rixs_map_on.shape[0], rixs_map_on.shape[1], energies_list[0], energies_list[-1]),
-                        aspect="auto",
-                        #interpolation="nearest",
-                        cmap="bwr",
-                        )
-
-    ax1.get_yaxis().set_major_formatter( mpl.ticker.FuncFormatter(lambda x, p: format(float(x), ',')))
-    plt.colorbar(imgplot)
-    plt.title("RIXS On, delay=%dps" % delay)
-    plt.ylabel("Incoming energy (eV)")
-
-    ax2 = plt.subplot(133)
-    rixs_map = rixs_map_on - rixs_map_off
-    imgplot = ax2.imshow(rixs_map, 
-                        origin="lower",
-                        extent=(rixs_map.shape[0], rixs_map.shape[1], energies_list[0], energies_list[-1]),
-                        aspect="auto",
-                        #interpolation="nearest",
-                        cmap="bwr",
-                        )
-
-    ax2.get_yaxis().set_major_formatter( mpl.ticker.FuncFormatter(lambda x, p: format(float(x), ',')))
-    plt.colorbar(imgplot)
-    plt.title("RIXS Off, delay=%dps" % delay)
-    plt.ylabel("Incoming energy (eV)")
-    
-
-    plt.tight_layout()
-    plt.show()
+        #plt.figure()
+        #plt.imshow(rixs_map[0] - rixs_map[1], aspect="auto", vmin=-10, vmax=10)
+        #plt.colorbar()
+        #plt.show()

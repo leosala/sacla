@@ -407,6 +407,25 @@ def image_set_thr(image, thr_low=None, thr_hi=None, replacement_value=0):
     return new_image
 
 
+def image_subtract_image(image, sub_image):
+    """Returns a copy of the original image, after subtraction of a user-provided image (e.g. dark background)
+
+    Parameters
+    ----------
+    image: Numpy array
+        the input array image
+    image: Numpy array
+        the image to be subtracted
+
+    Returns
+    -------
+    image: Numpy array
+        a copy of the original image, with subtraction applied
+    """
+    new_image = image.copy()
+    return new_image - sub_image
+
+
 class Analysis(object):
     """Simple container for the analysis functions to be loaded into AnalysisProcessor. At the moment, it is only used internally inside AnalysisProcessor
     """
@@ -651,11 +670,13 @@ class AnalysisProcessor(object):
         dataset = hf[self.run + "/" + self.dataset_name]
 
         try:
-            tags_list = hf[self.run + "/event_info/tag_number_list"].value
+            tags_list = hf[self.run + "/event_info/tag_number_list"].value.tolist()
         except:
             print sys.exc_info()
 
-        ### TODO fix this
+        if tags is not None:
+            tags_list = np.intersect1d(tags.astype(int), tags_list, assume_unique=True)
+
         n_images = len(tags_list)
         if n != -1:
             if n < len(tags_list):
@@ -686,9 +707,9 @@ class AnalysisProcessor(object):
             
         # loop on tags
         for tag_i, tag in enumerate(tags_list[0:n_images]):
-            if tags is not None:
-                if tag not in tags:
-                    continue
+            #if tags is not None:
+            #    if tag not in tags:
+            #        continue
 
             try:
                 image = dataset["tag_" + str(tag) + "/detector_data"][:]
@@ -697,6 +718,7 @@ class AnalysisProcessor(object):
                         image = self.f_for_all_images[k]['f'](image, **self.f_for_all_images[k]['args'])
             except KeyError:
                 image = None
+                print tag
                 pass
             except:
                 # when an image does not exist, a Nan (not a number) is returned. What to
@@ -704,6 +726,7 @@ class AnalysisProcessor(object):
                 image = None
                 print sys.exc_info()
                 pass
+
             if image is not None and analysis.temp_arguments["image_shape"] is not None:
                 analysis.temp_arguments["image_shape"] = image.shape
                 analysis.temp_arguments["image_dtype"] = image.dtype
