@@ -66,10 +66,10 @@ def get_data_df(dataset_name, runs, selection=""):
             f = h5py.File(fname, "r")
             main_dset = f["run_" + str(run)]
         except:
-            print "Error loading run %s" % (run)
-            print sys.exc_info()[1]
+            print "Error loading run %s: %s" % (run, sys.exc_info[1])
             failed_runs.append(run)
-            continue
+            pass
+
         # Loading data from the specified datasets
         for k, v in daq_labels.iteritems():
             if k == "delay":
@@ -131,6 +131,7 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
 
     runs = sorted(df.run.unique())
     print runs
+
     # label for ascii output dump
     out_label = "rixs_" + runs[0] + "-" + runs[-1]
 
@@ -238,7 +239,8 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
     
         rixs_map_std[laser] = rixs_map[laser] / np.sqrt(rixs_map_std[laser])
         np.savetxt("%s_map_%s_%dps.txt" % (out_label, "on" if laser==0 else "off", delay), rixs_map[laser])
-    np.savetxt("%s_map_%dps_energies.txt" % (out_label, delay), sorted(events_per_energy[0].keys()))
+
+    #np.savetxt("%s_map_%dps_energies.txt" % (out_label, delay), sorted(events_per_energy[0].keys()))
 
     return rixs_map, rixs_map_std, total_results
 

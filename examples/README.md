@@ -13,3 +13,8 @@ This example shows how to add DAQ quantities from SACLA SQL database to a SACLA 
 ## example_roi.py
 
 This example shows how to retrieve and save ROI'd images from a SACLA data file
+
+## example_rixs.py
+
+This code produces a simple RIXS on/off map. Please have a look at the (fully documented) code for more details
+
