@@ -718,7 +718,7 @@ class AnalysisProcessor(object):
                         image = self.f_for_all_images[k]['f'](image, **self.f_for_all_images[k]['args'])
             except KeyError:
                 image = None
-                print tag
+                #print tag
                 pass
             except:
                 # when an image does not exist, a Nan (not a number) is returned. What to
