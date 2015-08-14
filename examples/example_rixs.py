@@ -69,6 +69,7 @@ def get_data_df(dataset_name, runs, selection=""):
             print "Error loading run %s: %s" % (run, sys.exc_info[1])
             failed_runs.append(run)
             pass
+
         # Loading data from the specified datasets
         for k, v in daq_labels.iteritems():
             if k == "delay":
@@ -127,6 +128,9 @@ def get_data_df(dataset_name, runs, selection=""):
 def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
     # In principle, a single run can contain *multiple mono settings*, so we need to load data from all the runs, and the group them by mono energy. `Pandas` can help us with that...
     # We load all data from files, place it in a `DataFrame`, and then add some useful derived quantities. At last, we use `tags` as index for the `DataFrame`
+
+    runs = sorted(df.run.unique())
+    print runs
 
     # label for ascii output dump
     out_label = "rixs_" + runs[0] + "-" + runs[-1]
@@ -235,6 +239,8 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
     
         rixs_map_std[laser] = rixs_map[laser] / np.sqrt(rixs_map_std[laser])
         np.savetxt("%s_map_%s_%dps.txt" % (out_label, "on" if laser==0 else "off", delay), rixs_map[laser])
+
+    #np.savetxt("%s_map_%dps_energies.txt" % (out_label, delay), sorted(events_per_energy[0].keys()))
 
     return rixs_map, rixs_map_std, total_results
 
