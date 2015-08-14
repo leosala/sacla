@@ -4,13 +4,16 @@ function of a scan parameter (energy, delay, etc). It also plots some control
 quantities, e.g. photon energy and I0
 """
 
+# TODO
+# remove hardcoded data dir
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import h5py
 import numpy as np
 from os import environ
 import os
-from sys import path
+from sys import path, exc_info
 # loading some utils
 path.append(environ["PWD"] + "/../")
 # contains some useful conversions, which can vary from beamtime to beamtime
@@ -27,10 +30,20 @@ ND = "/event_info/bl_3/eh_4/laser/nd_filter_motor_26"
 
 # directory containing HDF5 files
 # dir = "/work/timbvd/hdf5/"
-dir = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/"
+#dir = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/hdf5/"
+
+# units
+units = {}
+units["delay"] = "ps"
+units["energy"] = "keV"
+
+# constant quantity during a scan
+const_quant = {}
+const_quant["delay"] = "energy"
+const_quant["energy"] = "delay"
 
 
-def compute_xas(scan_type, start_run, end_run, t0=0):
+def compute_xas(scan_type, start_run, end_run, data_dir, t0=0):
     """
     load HDF5 files corresponding to runs, filter data and return datasets (using pandas DataFrames)
 
@@ -46,16 +59,22 @@ def compute_xas(scan_type, start_run, end_run, t0=0):
 
     for i in range(int(start_run), int(end_run) + 1):
         # fname = dir + str(i) + "_nompccd.h5"
-        fname = dir + str(i) + "_roi.h5"
+        fname = data_dir + str(i) + "_roi.h5"
         run = fname.split("/")[-1].replace("_roi", "").replace(".h5", "").replace("_nompccd", "")
 
         try:
             f = h5py.File(fname, "r")
             tags = f["/run_" + run + "/event_info/tag_number_list"][:]
+        except IOError:
+            print exc_info()
+            continue
         except:
-            print "Last good run was %d" % int(i - 1)
-            end_run = str(i - 1)
-            break
+            print exc_info()
+            #print "Last good run was %d" % int(i - 1)
+            #end_run = str(i - 1)
+            #continue
+            print "[ERROR] dunno what to do, call support!"
+        #break 
 
         # create dataframes from hdf5 files
         photon_energy = f["/run_" + run + "/event_info/bl_3/oh_2/photon_energy_in_eV"][:]
@@ -111,8 +130,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-d", "--outputdir", help="output directory", action="store", default=".")
-    parser.add_argument("-l", "--label", help="prefix label for image, ASCII output. Default: test", action="store", default="test")
+    parser.add_argument("-o", "--outputdir", help="output directory", action="store", default=".")
+    parser.add_argument("-d", "--datadir", help="data directory directory", action="store", default= "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/hdf5/")
+    parser.add_argument("-l", "--label", help="prefix label for image, ASCII output. Default: test", action="store", default=None)
 
     parser.add_argument("-n", "--noplot", help="do not plot", action="store_true", default=False)
     parser.add_argument("-s", "--start_run", help="start_run", action="store", default="1")
@@ -125,24 +145,25 @@ if __name__ == "__main__":
 
     # t0
     t0 = 221
-    df, df_conds, end_run = compute_xas(args.scan_type, args.start_run, args.end_run, t0=t0)
+    df, df_conds, end_run = compute_xas(args.scan_type, args.start_run, args.end_run, args.datadir, t0=t0)
 
     if args.check:
         df_conds.plot(subplots=True, linestyle="", marker=".", figsize=(10, 10))
 
+    if args.label is None:
+        args.label = "scan-%s_%s" %(args.start_run, end_run)
+    #print df
     df_laser_on = df[df["laser"] == 1]
     df_laser_off = df[df["laser"] == 0]
 
-    df_counts_on = df_laser_on.groupby(level='energy').count()["ND"]
-    df_counts_off = df_laser_off.groupby(level='energy').count()["ND"]
-    
+    index_name = args.scan_type
+    df_counts_on = df_laser_on.groupby(level=index_name).count()["ND"]
+    df_counts_off = df_laser_off.groupby(level=index_name)
+
     # get averages
     df_on = df_laser_on.mean(level=0)
     df_off = df_laser_off.mean(level=0)
     df_diff = (df_on - df_off)
-    # adding number of events
-    df_on["events"] = df_counts_on.values
-    df_off["events"] = df_counts_off.values
 
     # get std_dev
     df_on_std = df_laser_on.std(level=0)
@@ -150,21 +171,27 @@ if __name__ == "__main__":
     df_diff_std = np.sqrt((df_on_std) * (df_on_std) + (df_off_std) * (df_off_std))
 
     # std error
-    df_on["absorp_stderr"] = df_laser_on["absorp"].sem(level='energy')
-    df_off["absorp_stderr"] = df_laser_off["absorp"].sem(level='energy')
+    df_on["absorp_stderr"] = df_laser_on["absorp"].sem(level=index_name)
+    df_off["absorp_stderr"] = df_laser_off["absorp"].sem(level=index_name)
     df_diff["absorp_stderr"] = np.sqrt((df_on["absorp_stderr"]) ** 2 + (df_off["absorp_stderr"]) ** 2)
 
     # plot
-    fig = plt.figure(figsize=(20, 15))
-    fig.suptitle("Runs %s - %s, delay = 1 ps" % (args.start_run, end_run), fontsize=20)
+    fig = plt.figure(figsize=(10, 7))
+    if const_quant.has_key(index_name):
+        fig.suptitle("Runs %s - %s, %s = %.3f %s" % (args.start_run, end_run, const_quant[index_name], df[const_quant[index_name]].iloc[0], units[const_quant[index_name]]), fontsize=20)
+    else:
+        fig.suptitle("Runs %s - %s" % (args.start_run, end_run), fontsize=20)
     a2 = plt.subplot(111)
-    df_on["absorp"].plot(label="laser on", color="b", linestyle="-", marker="o")
-    df_off["absorp"].plot(label="laser off", color="r", linestyle="-", marker="o")
-    df_diff["absorp"].plot(label="10x on - off", color="k", linestyle="-", marker="o")
-    a2.fill_between(df_on.index.tolist(), (df_on - df_on_std)["absorp"].values.tolist(), (df_on + df_on_std)["absorp"].values.tolist(), alpha=0.8, edgecolor='#4d4dff', facecolor='#4d4dff')
-    a2.fill_between(df_off.index.tolist(), (df_off - df_off_std)["absorp"].values.tolist(), (df_off + df_off_std)["absorp"].values.tolist(), alpha=0.8, edgecolor='#FF6666', facecolor='#FF6666')
-
-    a2.fill_between(df_diff.index.tolist(), (df_diff - df_diff_std)["absorp"].values.tolist(), (df_diff + df_diff_std)["absorp"].values.tolist(), alpha=0.8, edgecolor='#999999', facecolor='#999999')
+    df_on["absorp"].plot(label="laser on", color="b", linestyle="-", marker="o", yerr=df_on["absorp_stderr"])
+    df_off["absorp"].plot(label="laser off", color="r", linestyle="-", marker="o", yerr=df_off["absorp_stderr"])
+    df_diff["absorp"].plot(label="on - off", color="k", linestyle="-", marker="o", yerr=df_diff["absorp_stderr"])
+    
+    ### This is if you want error bands
+    #a2.fill_between(df_on.index.tolist(), (df_on - df_on_std)["absorp"].values.tolist(), (df_on + df_on_std)["absorp"].values.tolist(), alpha=0.8, edgecolor='#4d4dff', facecolor='#4d4dff')
+    #a2.fill_between(df_off.index.tolist(), (df_off - df_off_std)["absorp"].values.tolist(), (df_off + df_off_std)["absorp"].values.tolist(), alpha=0.8, edgecolor='#FF6666', facecolor='#FF6666')
+    #a2.fill_between(df_diff.index.tolist(), (df_diff - df_diff_std)["absorp"].values.tolist(), (df_diff + df_diff_std)["absorp"].values.tolist(), alpha=0.8, edgecolor='#999999', facecolor='#999999')
+    a2.set_xlabel("%s (%s)" %(index_name, units[index_name]))
+    a2.set_ylabel("a.u. (with standard errors)")
     plt.legend(title="", loc="best")
 
     if args.asciifile:
@@ -199,6 +226,14 @@ if __name__ == "__main__":
     plt.legend(title="delay = %d ps" % 2, loc="best")
     """
 
-    plt.savefig(args.label + ".png")
+    plt.savefig(os.path.join(args.outputdir, args.label + ".png"))
+
+    print ""
+    if args.asciifile:
+        print "ASCII dumps and scan plot saved in: %s" % args.outputdir
+        print "See them with e.g.: ls -lah %s*" % os.path.join(args.outputdir, args.label)
+    else:
+        print "Scan plot saved in: %s" % args.outputdir
+        print "See it with e.g.: ls -lah %s*" % os.path.join(args.outputdir, args.label)
     if not args.noplot:
         plt.show()
