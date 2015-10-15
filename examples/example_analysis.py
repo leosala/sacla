@@ -9,13 +9,15 @@ import sys
 #SACLA_LIB = "../"
 #sys.path.append(SACLA_LIB)
 
+TOOLS_DIR = "../../tools"
+
 # Loading ImagesProcessor
 try:
     from tools.images_processor import ImagesProcessor
     #from tools.plot_utilities import plot_utilities as pu
 except:
     try:
-        sys.path.append("../../")
+        sys.path.append(TOOLS_DIR + "/../")
         from tools.images_processor import ImagesProcessor
     except:
         print "[ERROR] cannot load ImagesProcessor library"

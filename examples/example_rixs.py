@@ -19,17 +19,31 @@ import h5py
 import pandas as pd
 
 # Loading SACLA tools 
-#SACLA_LIB = "../"
-SACLA_LIB = "/swissfel/photonics/software/python-code/sacla/"
+SACLA_LIB = "../"
+#SACLA_LIB = "/swissfel/photonics/software/python-code/sacla/"
 sys.path.append(SACLA_LIB)
 import utilities as ut
+TOOLS_DIR = "../../tools"
+# Loading ImagesProcessor
+try:
+    from tools.images_processor import ImagesProcessor
+    #from tools.plot_utilities import plot_utilities as pu
+except:
+    try:
+        sys.path.append(TOOLS_DIR + "/../")
+        from tools.images_processor import ImagesProcessor
+    except:
+        print "[ERROR] cannot load ImagesProcessor library"
+        
 
 # specific converters for the 2014-11 data taking. These should be customized per each beamtime!
 from utilities import beamtime_converter_201411XX as sacla_converter
 
 # directory containing ROI'd hdf5 files
-DIR = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/hdf5/"
-dark_file = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/dark/dark_256635.h5"
+#DIR = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/hdf5/"
+#dark_file = "/swissfel/photonics/data/2014-11-26_SACLA_ZnO/dark/dark_256635.h5"
+DIR = "/home/sala/Work/Data/SACLA/"
+dark_file = DIR + "dark_256635.h5"
 
 # Then, we define:
 # * the SACLA datasets
@@ -66,7 +80,7 @@ def get_data_df(dataset_name, runs, selection=""):
             f = h5py.File(fname, "r")
             main_dset = f["run_" + str(run)]
         except:
-            print "Error loading run %s: %s" % (run, sys.exc_info[1])
+            print "Error loading run %s: %s" % (run, sys.exc_info()[1])
             failed_runs.append(run)
             pass
         # Loading data from the specified datasets
@@ -148,16 +162,16 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
     fnames = [DIR + str(run) +"_roi.h5" for run in runs]
 
     # The AnalysisProcessor
-    an = ut.analysis.AnalysisProcessor()
+    an = ImagesProcessor(facility="SACLA")
     # if you want a flat dict as a result
     an.flatten_results = True
 
     # add analysis
-    an.add_analysis("image_get_spectra", args={'axis': 1, 'thr_low': thr_low, 'thr_hi': thr_hi})
-    an.add_analysis("image_get_mean_std", args={'thr_low': thr_low})
+    an.add_analysis("get_projection", args={'axis': 1, 'thr_low': thr_low, 'thr_hi': thr_hi})
+    an.add_analysis("get_mean_std", args={'thr_low': thr_low})
     bins = np.arange(-150, 1000, 5)
-    an.add_analysis("image_get_histo_adu", args={'bins': bins})
-    an.set_sacla_dataset(dataset_name)
+    an.add_analysis("get_histo_counts", args={'bins': bins})
+    an.set_dataset("/run_%s/%s" % (str(run), dataset_name))
 
     # run the analysis
     n_events = -1
@@ -255,7 +269,12 @@ if __name__ == "__main__":
         sel = "(x_shut == 1) & (x_status == 1) & (I0_up > 0.01) & (I0_down > 0.01) & (ND > -1) & (photon_mono_energy) > 9"
         rixs_map, rixs_map_std, total_results = get_rixs_spectra("detector_2d_1", runs, thr_low=70, thr_hi=170, selection=sel)
 
-        #plt.figure()
-        #plt.imshow(rixs_map[0] - rixs_map[1], aspect="auto", vmin=-10, vmax=10)
-        #plt.colorbar()
-        #plt.show()
+        plt.figure()
+        plt.imshow(rixs_map[0] - rixs_map[1], aspect="auto", vmin=-10, vmax=10)
+        plt.colorbar()
+        
+        plt.figure()
+        plt.imshow(rixs_map[0] + rixs_map[1], aspect="auto", vmin=-10, vmax=10)
+        plt.colorbar()
+        
+        plt.show()

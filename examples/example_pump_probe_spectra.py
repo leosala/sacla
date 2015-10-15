@@ -1,3 +1,7 @@
+################################
+# TO BE REWRITTEN!             #
+################################
+
 import h5py
 from time import time
 import sys
@@ -6,17 +10,27 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # loading some utils
-sys.path.append(os.environ["PWD"] + "/../")
-import utilities as ut
-# from utilities.analysis import rebin
+TOOLS_DIR = "../../tools"
+
+# Loading ImagesProcessor
+try:
+    from tools.images_processor import ImagesProcessor
+    #from tools.plot_utilities import plot_utilities as pu
+except:
+    try:
+        sys.path.append(TOOLS_DIR + "/../")
+        from tools.images_processor import ImagesProcessor
+    except:
+        print "[ERROR] cannot load ImagesProcessor library"
+
 
 create_calib = True
 #run = "206162"
-run = "206178"
+run = "259408"
 #run = "206183"
 DIR = "/media/sala/Elements/Data/Sacla/"
 
-f = h5py.File(DIR + run + ".h5")
+f = h5py.File(DIR + run + "_roi.h5")
 
 
 tag_list = f["/run_" + run + "/event_info/tag_number_list"][:]
