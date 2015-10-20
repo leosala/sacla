@@ -66,7 +66,7 @@ def compute_xas(scan_type, start_run, end_run, data_dir, t0=0):
             f = h5py.File(fname, "r")
             tags = f["/run_" + run + "/event_info/tag_number_list"][:]
         except IOError:
-            print exc_info()
+            print "[ERROR] Cannot read file %s" % fname
             continue
         except:
             print exc_info()

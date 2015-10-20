@@ -17,3 +17,4 @@ This example shows how to retrieve and save ROI'd images from a SACLA data file
 ## example_rixs.py
 
 This code produces a simple RIXS on/off map. Please have a look at the (fully documented) code for more details
+
