@@ -6,7 +6,7 @@ webpage for run info.
 
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import sys
 
 if __name__ == "__main__":
     import argparse
@@ -16,14 +16,24 @@ if __name__ == "__main__":
     parser.add_argument("filename", help="Name of the .csv file with the average scan info", nargs='+')
     parser.add_argument("-o", "--outputdir", help="output directory", action="store", default=".")
     parser.add_argument("-p", "--plot", help="plot, do not save", action="store_true")
+    parser.add_argument("-b", "--begin", help="beginning of the time perion, in YYYY-MM-DD HH:MM:SS format", action="store")
+    parser.add_argument("-e", "--end", help="enf of the time perion, in YYYY-MM-DD HH:MM:SS format", action="store")
+
+    args = parser.parse_args()
+    if args.begin is None or args.end is None:
+        print "[ERROR] -b and -e are compulsory arguments!"
+        sys.exit(-1)
+    
     # parser.add_argument("-d", "--daemon", help="download up to latest run number and keep polling (only applies if -l is specified)", action="store_true")
 
-    # WARNING: this url contains hardcoded time ranges, please update as needed
-    url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?from_time=2014%2F11%2F27+10%3A20%3A52&to_time=2014%2F11%2F30+23%3A59%3A52&search_key=time&admin=&bl=3&mode=Search"
+    begin = args.begin.replace("-", "%2F").replace(" ", "+").replace(":", "%3A")
+    end = args.end.replace("-", "%2F").replace(" ", "+").replace(":", "%3A")
+
+    url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?from_time=%s&to_time=%s&search_key=time&admin=&bl=3&mode=Search" % (begin, end)
+    
     rdf = pd.read_html(url, header=0)[1]
     rdf = rdf.set_index("run #")
 
-    args = parser.parse_args()
 
     fig = plt.figure(figsize=(20, 15))
 

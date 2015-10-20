@@ -3,7 +3,7 @@
 **Warning**: some of these scripts are outdated, and will be changed soon... The scripts described in this README file should anyhow work with no issues.
 
 ## get_data
-Gets data from the SACLA data buffer and converts them into HDF5 (via Maketaglist and DataConvert4). You do need a file config for MakeTagList in DIR//config/maketaglist.conf, where DIR is the data directory specified in the script
+Gets data from the SACLA data buffer and converts them into HDF5 (via Maketaglist and DataConvert4). You do need a file config for MakeTagList in `DIR//config/maketaglist.conf`, where `DIR` is the data directory specified in the script
 
 ### Usage
 

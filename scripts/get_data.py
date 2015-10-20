@@ -115,7 +115,7 @@ def download_run(current_run, nompccd):
             command = 'DataConvert4 -f %s -l %s -dir %s -o %06d_nompccd.h5' % (dataconvert_config_file, taglist_file, tmp_data_directory, current_run)
 
         if not VERBOSE:
-            command += " &> /dev/null"
+            command += " &> dataconvert_%06d.log" % current_run
         print command
         try:
             os.system(command)
