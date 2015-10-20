@@ -7,13 +7,11 @@
 # Use: qsub -I to get an interactive shell on a node
 
 
-#data_directory= "/work/leonardo"
-data_directory = '/work/timbvd/hdf5'
+data_directory = "/work/leonardo"
+#data_directory = '/work/timbvd/hdf5'
 #data_directory='/Users/ebner/Desktop/data'
-tmp_data_directory='%s/tmp' % data_directory
-taglist_directory='%s/taglists' % data_directory
-
-
+tmp_data_directory = '%s/tmp' % data_directory
+taglist_directory = '%s/taglists' % data_directory
 
 maketaglist_condition_file='%s/config/maketaglist.conf' % data_directory
 dataconvert_config_file='%s/config/dataconvert.conf' % data_directory
@@ -88,7 +86,11 @@ def download_run(current_run, nompccd):
         if nompccd:
             taglist_file = '%s/%06d_taglist_nompccd.txt' % (taglist_directory, current_run)
 
-        command = 'MakeTagList -b %d -r %06d -inp %s -out %s' % (beamline, current_run, maketaglist_condition_file, taglist_file)
+        if os.path.isfile(maketaglist_condition_file):
+            command = 'MakeTagList -b %d -r %06d -inp %s -out %s' % (beamline, current_run, maketaglist_condition_file, taglist_file)
+        else:
+            print "[WARNING] MakeTagList cfg file %s could not be found, proceeding with no conditions" % maketaglist_condition_file
+            command = 'MakeTagList -b %d -r %06d -out %s' % (beamline, current_run,  taglist_file)
         print command
         try:
             os.system(command)
@@ -107,6 +109,7 @@ def download_run(current_run, nompccd):
 
         # Call DataConvert4
         # DataConvert4 -f test1017.conf -l tag_number1017.list -dir ./ -o test1017.h5
+        
         command = 'DataConvert4 -f %s -l %s -dir %s -o %06d.h5' % (dataconvert_config_file, taglist_file, tmp_data_directory, current_run)
         if nompccd:
             command = 'DataConvert4 -f %s -l %s -dir %s -o %06d_nompccd.h5' % (dataconvert_config_file, taglist_file, tmp_data_directory, current_run)
@@ -114,7 +117,10 @@ def download_run(current_run, nompccd):
         if not VERBOSE:
             command += " &> /dev/null"
         print command
-        os.system(command)
+        try:
+            os.system(command)
+        except:
+            print sys.exc_info()
 
         ## [end] DataConvert4
 
@@ -208,14 +214,11 @@ if __name__ == "__main__":
 
     arguments = parser.parse_args()
 
-    print arguments.latest
-    print arguments.run
-    print arguments.daemon
-    print arguments.nompccd
-    print arguments.jobs
-
-
-    print 'Start run number is "', arguments.run
+    if not os.path.isfile(dataconvert_config_file):
+        print "[ERROR] Cannot find DataConvert4 cfg file %s, please copy there a suitable cfg file" % dataconvert_config_file
+        sys.exit(-1)
+    
+    print 'Start run number is ', arguments.run
 
     if arguments.latest:
         download_run_to_latest(int(arguments.run), arguments.daemon, arguments.nompccd, int(arguments.jobs))
