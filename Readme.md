@@ -56,12 +56,16 @@ sys.path.append(SACLA_LIB)
 import utilities as ut
 ```
 
-Before using the code for the first time, there are some Cython libraries that need to be compiled first. Please go into the `utilities` directory and execute:
+Please compile the Cython extensions before running the code (this will likely disappear...)
 
 ```
+cd utilities
 ./compile_cython.sh
 ```
 
+# Examples
+
+## Exploring HDF5 files
 
 
 

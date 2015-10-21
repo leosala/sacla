@@ -6,7 +6,7 @@ import pytz
 import subprocess
 import sys
 
-import cython_utils
+#import cython_utils
 
 def get_last_run():
     """Gets the last run from sacla webpage"""

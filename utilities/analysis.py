@@ -1,6 +1,6 @@
 import numpy as np
 import math
-import cython_utils
+#import cython_utils
 from time import time
 import sys
 import h5py
@@ -34,7 +34,7 @@ def get_data_daq(filenames, daq_labels, sacla_converter, t0=0, selection=""):
         
         try:
             f = h5py.File(fname, "r")
-            run = f.keys()[1].split("_")[1]  # this assumes 1 run per file, as run_XXXXX
+            run = int(f.keys()[1].split("_")[1])  # this assumes 1 run per file, as run_XXXXX
             main_dset = f[f.keys()[1]]  
         except:
             print "Error loading file %s: %s" % (fname, sys.exc_info()[1])
