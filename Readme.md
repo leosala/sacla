@@ -35,26 +35,25 @@ In [1]:
 
 ## Getting this code
 
+This code needs a *tools* library, located here: (https://github.com/leosala/photon_tools.git).
+
 You can either clone this git repository, e.g.:
 
 ```
+mkdir mydir
+cd mydir
+git clone https://github.com/leosala/photon_tools.git tools
 git clone https://github.com/leosala/sacla.git
 ```
 
 or just download a tarball, e.g.:
 
 ```
+wget https://github.com/leosala/photon_tools/archive/master.zip
 wget https://github.com/leosala/sacla/archive/master.zip
 ```
 
-Place the code in some directory (e.g. `/scratch/sacla_code`), and either run code directly from there (e.g. files in the `example` and `scripts` directories), or you can load e.g. `utilities` library using this code snippled:
-
-```
-# Loading SACLA tools 
-SACLA_LIB = "/scratch/sacla_code"
-sys.path.append(SACLA_LIB)
-import utilities as ut
-```
+Default libraries (tools, numpy, etc) can be loaded doing `%load load_defaults.py` in an IPython shell.
 
 Please compile the Cython extensions before running the code (this will likely disappear...)
 
