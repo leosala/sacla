@@ -30,18 +30,18 @@ print "Imported sacla_utils"
 
 # Loading ImagesProcessor
 try:
-    from tools.images_processor import ImagesProcessor
-    from tools.plot_utilities import plot_utilities as pu
-    import tools.hdf5_utilities as h5u
+    from photon_tools.images_processor import ImagesProcessor
+    from photon_tools.plot_utilities import plot_utilities as pu
+    import photon_tools.hdf5_utilities as h5u
     print "Imported ImagesProcessor"
     print "Imported plot_utilities as pu"
     print "Imported hdf5_utilities as h5u"
 except:
     try:
         sys.path.append(TOOLS_DIR)
-        from tools.images_processor import ImagesProcessor
-        from tools.plot_utilities import plot_utilities as pu
-        import tools.hdf5_utilities as h5u
+        from photon_tools.images_processor import ImagesProcessor
+        from photon_tools.plot_utilities import plot_utilities as pu
+        import photon_tools.hdf5_utilities as h5u
         print "Imported ImagesProcessor"
         print "Imported plot_utilities as pu"
         print "Imported hdf5_utilities as h5u"
