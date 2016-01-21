@@ -1,3 +1,11 @@
+"""
+Original from https://github.com/freespace/dphil-data-tools/blob/master/lecroy.py
+(thanks!)
+
+Only minor modifications
+"""
+
+
 import numpy as np
 
 def read_timetrace(filename):

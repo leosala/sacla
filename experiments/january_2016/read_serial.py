@@ -5,7 +5,9 @@ Created on Wed Jan 20 07:17:45 2016
 @author: sala
 """
 
-def readserial(wfo, dt):
+import numpy as np
+
+def read_serial(wfo, dt):
     
     wf = wfo.copy()
     #Threshold for logic
