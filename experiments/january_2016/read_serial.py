@@ -27,7 +27,11 @@ def read_serial(wfo, dt):
     wf[wf>=loglimit] = 1
 
     #Search for startbit
-    startbit = np.where(wf>0.5)[0][0];
+    startbit = np.where(wf>0.5)[0]
+    if len(startbit) == 0:
+        return 0, wf
+    else:
+        startbit = startbit[0]
 
     #First bit position (middle of first bit)
     startpos = startbit + 1.22 * step;

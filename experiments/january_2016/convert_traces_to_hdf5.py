@@ -12,23 +12,28 @@ import h5py
 import numpy as np
 import sys
 
-indir = "/home/sala/Work/Data/SACLA/Beamtime2014/Streak Data 2/2014-02-19_Run024/"
-#indir = "/media/cifs/Lcry0715n47498_F/Test_for_h5/"
-#outdir = "/media/cifs/sencha/test_leo/"
+#indir = "/home/sala/Work/Data/SACLA/Beamtime2016/Test_for_h5/"
+indir = "/media/cifs/Lcry0715n47498_F/Test_10000_shots/"
+outdir = "/media/cifs/sencha/test_leo/"
 #/media/sshfs/sacla-hpc/work/leonardo/tmp/"
-outdir = "/tmp/"
+#outdir = "/tmp/"
 
 
-#traces = ["C1", "C2", "C3", "C4"]
-traces = ["C1", "C2", "C4", "F2"]
 tag_trace = "C4"
 
-def convert_traces_to_hdf5(indir, outdir, traces, outfile=None, tag_trace="C4"):
 
+def convert_traces_to_hdf5(indir, outdir, outfile=None, tag_trace="C4", test_trace=None):
+    g_tags = []
+        
+    flist = os.listdir(indir)
+    # get traces from filename list
+    traces = list(set(map(lambda x: x[:2], flist)))
     # tag trace goes first
     traces.remove(tag_trace)
     traces.insert(0, tag_trace)
-
+    
+    print "Found this traces: ", traces    
+    
     buffer_size = 100  # images
     default_value = 0
     
@@ -40,18 +45,25 @@ def convert_traces_to_hdf5(indir, outdir, traces, outfile=None, tag_trace="C4"):
     bi = 0
     li = 0
     
-    flist = os.listdir(indir)
     #fnumbers = sorted(set(map(lambda x: x[7:12], flist)))
     fnumbers = None
+    t_flists = {}
+    t_fnumbers = {}
+
+    # running only on events with all traces
+    for trace in traces:
+        t_flists[trace] = filter(lambda x: x.find(trace) != -1, flist)  
+        t_fnumbers[trace] = sorted(set(map(lambda x: x[7:12], t_flists[trace])))   
+        if fnumbers is None:
+            fnumbers = t_fnumbers[trace]
+        else:
+            fnumbers = set(fnumbers) & set(t_fnumbers[trace])
+        
+    fnumbers = list(sorted(fnumbers))
     for trace in traces:
         count = 0
-        t_flist = filter(lambda x: x.find(trace) != -1, flist)  
-
+        t_flist = t_flists[trace]
         # first, tags... skipping events with no tag
-        if trace == tag_trace:        
-            fnumbers = sorted(set(map(lambda x: x[7:12], t_flist)))
-
-        print trace, len(t_flist)
     
         groups[trace] = fout.create_group(trace)    
         
@@ -69,18 +81,16 @@ def convert_traces_to_hdf5(indir, outdir, traces, outfile=None, tag_trace="C4"):
             break
         
         for fi, n in enumerate(fnumbers):
+            fname = indir + trace + "Trace" + str(n).zfill(5) + ".trc"
             try:
-                bwf = lecroy.LecroyBinaryWaveform(indir + trace + "Trace" + str(n).zfill(5) + ".trc")
+                bwf = lecroy.LecroyBinaryWaveform(fname)
                 t = bwf.WAVE_ARRAY_1_time
                 d = bwf.WAVE_ARRAY_1.ravel()
 
                 #t, d = lecroy.read_timetrace(indir + trace + "Trace" + str(n).zfill(5) + ".trc")
             except:
-                #print indir + trace + "Trace" + str(n) + ".trc"
-                
-                #print sys.exc_info()
-                #print "Skipping ", trace, n
-                #print t
+                print "[ERROR] file %s" % fname
+                print sys.exc_info()[1]
                 # at least the first n should exist for all traces
                 if t is None:
                     continue
@@ -98,12 +108,11 @@ def convert_traces_to_hdf5(indir, outdir, traces, outfile=None, tag_trace="C4"):
                                              compression="gzip", dtype=np.float32, 
                                              shuffle=False, compression_opts=6,
                                              chunks=(1, d_size))
-                dset_n = groups[trace].create_dataset("filenum", (buffer_size, ), maxshape=(None, ),
+                dset_n = groups[trace].create_dataset("filenumber", (buffer_size, ), maxshape=(None, ),
                                              dtype=np.int, chunks=True)
                 if trace == tag_trace:
-                    dset_tag = groups[trace].create_dataset("tags", (buffer_size, ), maxshape=(None, ),
+                    dset_tag = fout.create_dataset("tags", (buffer_size, ), maxshape=(None, ),
                                              dtype=np.int64, chunks=True)
-                    
             
             if fi == 0:
                 spectra_buffer = np.ndarray((buffer_size, d_size), dtype=np.float32)
@@ -116,7 +125,9 @@ def convert_traces_to_hdf5(indir, outdir, traces, outfile=None, tag_trace="C4"):
             if bi < buffer_size:
                 spectra_buffer[bi] = d
                 if trace == tag_trace:
+                    #print d, bwf.HORIZ_INTERVAL
                     tag_buffer[bi] = read_serial(d, bwf.HORIZ_INTERVAL)[0]
+                    g_tags.append(tag_buffer[bi])
                     #print tag_buffer[bi]
                 n_buffer[bi] = n
                 bi += 1
@@ -143,16 +154,36 @@ def convert_traces_to_hdf5(indir, outdir, traces, outfile=None, tag_trace="C4"):
             continue            
         print count
         dset_t[:] = t
-        if dset_t.shape[0] > count:
+        if bi != 0:
+            try:
+                dset_d[li:li + bi] = spectra_buffer[:bi]
+                dset_n[li:li + bi] = n_buffer[:bi]
+                #dset_d.resize(dset_d.shape[0] + buffer_size, axis=0)
+                #dset_n.resize(dset_n.shape[0] + buffer_size, axis=0)
+                
+                if trace == tag_trace:
+                    dset_tag[li:li + bi] = tag_buffer[:bi]
+                    #dset_tag.resize(dset_tag.shape[0] + buffer_size, axis=0)
+                li += bi
+                count = li
+                
+                bi = 0
+            except:
+                print sys.exc_info()
+                
+        if dset_t.shape[0] >= count:
             dset_d.resize(count, axis=0)
             dset_n.resize(count, axis=0)
             dset_tag.resize(count, axis=0)
-            print dset_d.shape
-        
            
     fout.close()
-    return 0
+    print "Output file %s created" % (outdir + outfile)
+    return g_tags, outdir + outfile
 
 
 if __name__ == "__main__":
-    convert_traces_to_hdf5(indir, outdir, traces)
+    tags, outfile  = convert_traces_to_hdf5(indir, outdir, )
+    hf = h5py.File(outfile)
+    r_tags = hf['tags'][:]
+    hf.close()
+    assert( (tags - r_tags == 0).all() )
