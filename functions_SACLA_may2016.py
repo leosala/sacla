@@ -6,14 +6,16 @@ Created on Thu Nov 26 10:52:18 2015
 """
 
 import cPickle as pickle
-import numpy as np
+
 import matplotlib.pyplot as plt
-plt.style.use('ggplot')
+import numpy as np
 import pandas as pd
 import scipy.stats as stats
 from scipy import ndimage
+
 from photon_tools.images_processor import ImagesProcessor
 
+plt.style.use('ggplot')
 
 def plotInDataFrame(rname, xdata='delay', ydata='intensity', options=[], selection=''):
     """
@@ -64,7 +66,7 @@ def plotInDataFrame(rname, xdata='delay', ydata='intensity', options=[], selecti
 def getTTfromCSV(df_orig, CSVname, method, tt_stage_offset=0):
     """
     load timing tool data from its CSV file
-    Checks for correspondance between tagnumbers with the file created with
+    Checks for correspondence between tagnumbers with the file created with
     get_data_daq.
     In case no perfect correspondence is found, only common tagnumbers are kept
     timing tool data are written as a new column in the dataframe df:
@@ -84,6 +86,7 @@ def getTTfromCSV(df_orig, CSVname, method, tt_stage_offset=0):
         ratio = float(len(df.index)) / len(df_orig.index)
         string = "\n TT-data matching: " + str(ratio) + " of total tags are matching."
         print(string)
+
     df["dl_corr"] = df.delay - df.delay_tt_stage - tt_stage_offset
 
     if "fit" in method:
@@ -127,7 +130,8 @@ def bin_tt(df, bin_edges, calibration=-2.8):
         df_out['intensity_lon'] = binned_int_lon.statistic
         df_out['bkg_lon'] = binned_bkg_lon.statistic
         df_out['I0_lon'] = binned_I0_lon.statistic
-    else: print('No laser ON shots')
+    else:
+        print('No laser ON shots')
 
     if len(df_loff) != 0:
         binned_int_loff = stats.binned_statistic(df_loff.dl_corr, df_loff.intensity, bins=bin_edges, statistic='mean')
@@ -136,7 +140,8 @@ def bin_tt(df, bin_edges, calibration=-2.8):
         df_out['I0_loff'] = binned_I0_loff.statistic
         df_out['bkg_loff'] = binned_bkg_loff.statistic
         df_out['intensity_loff'] = binned_int_loff.statistic
-    else: print('No laser OFF shots')
+    else:
+        print('No laser OFF shots')
 
     bins_hist = bin_edges/bin_size
     if bins_hist[0] < 0:
@@ -183,7 +188,8 @@ def bin_motor(df, motor='delay'):
         df_out['intensity_lon_std'] = binned_int_lon_std.statistic
         df_out['bkg_lon_std'] = binned_bkg_lon_std.statistic
         df_out['I0_lon_std'] = binned_I0_lon_std.statistic
-    else: print('No laser ON shots')
+    else:
+        print('No laser ON shots')
 
     if len(df_loff) != 0:
         binned_int_loff = stats.binned_statistic(df_loff.scan_motor, df_loff.intensity, bins=bin_edges, statistic='mean')
@@ -198,7 +204,8 @@ def bin_motor(df, motor='delay'):
         df_out['I0_loff_std'] = binned_I0_loff_std.statistic
         df_out['bkg_loff_std'] = binned_bkg_loff_std.statistic
         df_out['intensity_loff_std'] = binned_int_loff_std.statistic
-    else: print('No laser OFF shots')
+    else:
+        print('No laser OFF shots')
 
     return df_out
 
@@ -206,7 +213,7 @@ def bin_motor(df, motor='delay'):
 def bin_tt_COM(df, bin_edges, rname, fname, calibration=0.01, roi=[[235, 270], [500, 540]]):
     """
     Bin data according to the timing tool and perform a center of mass analysis of the roi
-    This scrpit is somewhat redundant with the image analysis, as it loops again through all the images.
+    This script is somewhat redundant with the image analysis, as it loops again through all the images.
     """
 
     # create corrected delay
@@ -227,7 +234,8 @@ def bin_tt_COM(df, bin_edges, rname, fname, calibration=0.01, roi=[[235, 270], [
         df_out['intensity_lon'] = binned_int_lon.statistic
         df_out['bkg_lon'] = binned_bkg_lon.statistic
         df_out['I0_lon'] = binned_I0_lon.statistic
-    else: print('No laser ON shots')
+    else:
+        print('No laser ON shots')
 
     if len(df_loff) != 0:
         binned_int_loff = stats.binned_statistic(df_loff.dl_corr, df_loff.intensity, bins=bin_edges, statistic='mean')
@@ -236,7 +244,8 @@ def bin_tt_COM(df, bin_edges, rname, fname, calibration=0.01, roi=[[235, 270], [
         df_out['I0_loff'] = binned_I0_loff.statistic
         df_out['bkg_loff'] = binned_bkg_loff.statistic
         df_out['intensity_loff'] = binned_int_loff.statistic
-    else: print('No laser OFF shots')
+    else:
+        print('No laser OFF shots')
 
     """
     COM analysis
@@ -247,20 +256,20 @@ def bin_tt_COM(df, bin_edges, rname, fname, calibration=0.01, roi=[[235, 270], [
     peakCOM = np.zeros([len(df_out.time), 2])
 
     dataset_name = "/run_" + rname + "/detector_2d_1"
-    an = ImagesProcessor(facility="SACLA")
+    ip = ImagesProcessor(facility="SACLA")
 
-    an.flatten_results = True
-    an.set_dataset(dataset_name)
+    ip.flatten_results = True
+    ip.set_dataset(dataset_name)
 
-    an.add_preprocess("set_roi", args={'roi':roi})
-    an.add_analysis("get_mean_std")
+    ip.add_preprocess("set_roi", args={'roi': roi})
+    ip.add_analysis("get_mean_std")
 
     for ii in range(len(df_out.time)):
         n = ii+1
         ismember = (binnumber == n)
 
         tagList = df.index[ismember]
-        results = an.analyze_images(fname, n=-1, tags=tagList)
+        results = ip.analyze_images(fname, n=-1, tags=tagList)
 
         if 'images_mean' in results:
             peakCOM[ii, :] = ndimage.measurements.center_of_mass(results['images_mean'])
@@ -268,7 +277,7 @@ def bin_tt_COM(df, bin_edges, rname, fname, calibration=0.01, roi=[[235, 270], [
             peakCOM[ii, :] = np.NaN
 
         del results
-        print('bin number %s' %n)
+        print('bin number %s' % n)
 
     df_out['COMx'] = peakCOM[:, 0]
     df_out['COMy'] = peakCOM[:, 1]
