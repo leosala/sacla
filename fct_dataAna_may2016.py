@@ -115,8 +115,8 @@ def loadData(rname, useTT=0):
     DIR = "/home/usov_i/SACLA Dec2015/python_scripts2016/data/"
     CSVDIR = "/home/usov_i/SACLA Dec2015/python_scripts2016/data/"
     fname = DIR + rname + ".h5"
-    
-    df, fnames = sacla_utils.analysis.get_data_daq(fname, daq_labels, sacla_utils.beamtime_converter_201411XX)
+
+    df, fnames = sacla_utils.analysis.get_data_daq(fname, daq_labels, sacla_utils.beamtime_converter_201605XX)
 
     saveDir = "/home/usov_i/SACLA Dec2015/python_scripts2016/analyzed_runs/"
     imgAnaName = saveDir + "imgAna/" + rname + "_v2" + ".p"
