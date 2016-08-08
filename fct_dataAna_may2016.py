@@ -15,69 +15,6 @@ import functions_SACLA_may2016 as fsacla
 plt.style.use('ggplot')
 
 
-def imgAna(rname, roi, bkgRoi, n=-1):
-    from photon_tools.images_processor import ImagesProcessor
-
-    # data directories and names
-    DIR = "/home/usov_i/SACLA Dec2015/python_scripts2016/data/"
-    # DIR = "/esposiv/data/"
-    fname = DIR + rname + ".h5"
-    dataset_name = "/run_" + rname + "/detector_2d_1"
-
-    # create ImagesProcessor object
-    ip = ImagesProcessor(facility="SACLA")
-    # if you want a flat dict as a result
-    ip.flatten_results = True
-    ip.set_dataset(dataset_name)
-    
-    # INPUT PARAMETERS
-    thr = 50  # pixel's threshold value
-    
-    # PREPROCESS FUNCTIONS (bkg sub, masks, ...)
-    # (comment out for loading a background image) 
-    dark = np.load('/home/usov_i/SACLA Dec2015/python_scripts2016/analysis/dark_439011and02comb.npy')
-    ip.add_preprocess("subtract_correction", args={"sub_image": dark})
-    ip.add_preprocess("set_thr", args={"thr_low": thr})
-      
-    # ANALYSIS FUNCTIONS
-    ip.add_analysis("get_mean_std")  # , args={'thr_low': thr})
-    bins = np.arange(-50, 600, 2)
-    ip.add_analysis("get_histo_counts", args={'bins': bins, 'roi': roi})
-    ip.add_analysis("roi_bkgRoi", args={'roi': roi, 'bkg_roi': bkgRoi})
-
-    # run the analysis
-    # analyze_images(fname, n, tags)
-    results = ip.analyze_images(fname, n=n)
-    
-    # plot results
-    imgs = results["images_mean"]
-    plt.figure(figsize=(8, 8))
-    plt.subplot2grid((2, 2), (0, 0), rowspan=2)
-    plt.imshow(imgs)
-    #     plt.imshow(imgs[bkgRoi[0][0]:bkgRoi[0][1], bkgRoi[1][0]:bkgRoi[1][1]], aspect=0.5,
-    #                extent=(bkgRoi[1][0], bkgRoi[1][1], bkgRoi[0][0], bkgRoi[0][1]), interpolation="none")
-    plt.subplot2grid((2, 2), (0, 1))
-    plt.imshow(imgs[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]], aspect=0.5,
-               extent=(roi[1][0], roi[1][1], roi[0][0], roi[0][1]), interpolation="none")
-    plt.title('ROI')
-
-    # FOR DARKFRAME save to npy:
-    # np.save('/home/esposiv/python_scripts2016/analysis/dark_2016_388662_testsave.npy', imgs)
-
-    plt.subplot2grid((2, 2), (1, 1))
-#    plt.figure(figsize=(7, 7))
-    plt.bar(bins[:-1], results["histo_counts"], log=True, width=5)
-    plt.show()
-    
-    # save data as a pickle file
-    saveDir = "/home/usov_i/SACLA Dec2015/python_scripts2016/analyzed_runs/imgAna/"         
-    output = open(saveDir + rname + '_v2' + ".p", "wb")
-    pickle.dump(results, output)
-    output.close()
-    
-    return results
-
-
 def loadData(rname, useTT=0): 
     # Loading SACLA tools 
     import utilities as sacla_utils
