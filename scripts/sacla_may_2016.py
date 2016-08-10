@@ -77,7 +77,7 @@ plt.ion()
 
 # INPUT PARAMETERS
 thr = 50  # pixel's threshold value
-roi = [[560, 595], [285, 310]]  # SL [[xmin xmax], [ymin ymax]]
+roi = [[450, 520], [240, 280]]  # SL [[xmin xmax], [ymin ymax]]
 #  roi = [[420, 470], [190, 230]]  # Bragg Peak [[xmin xmax], [ymin ymax]]
 #  bkgRoi = np.array(roi) #+ np.array([[-40, 40], [-40, 40]])
 bkgRoi = np.array(roi)
@@ -126,7 +126,7 @@ for run in runs:
         #                extent=(bkgRoi[1][0], bkgRoi[1][1], bkgRoi[0][0], bkgRoi[0][1]), interpolation="none")
         plt.subplot2grid((2, 2), (0, 1))
         plt.imshow(imgs[roi[0][0]:roi[0][1], roi[1][0]:roi[1][1]], aspect=0.5,
-                   extent=(roi[1][0], roi[1][1], roi[0][0], roi[0][1]), interpolation="none")
+                   extent=(roi[1][0], roi[1][1], roi[0][1], roi[0][0]), interpolation="none")
         plt.title('ROI')
 
         # FOR DARKFRAME save to npy:
