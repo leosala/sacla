@@ -1,10 +1,8 @@
-import numpy as np
 import math
-#import cython_utils
-from time import time
 import sys
+
 import h5py
-import pydoc
+import numpy as np
 import pandas as pd
 
 
@@ -67,12 +65,16 @@ def get_data_daq(filenames, daq_labels, sacla_converter, t0=0, selection=""):
         filenames.remove(r)
 
     # round mono energy and delay
-    df_orig.photon_mono_energy = np.round(df_orig.photon_mono_energy.values, decimals=4)
-    df_orig.delay = np.round(df_orig.delay.values, decimals=1)
+    if 'photon_mono_energy' in df_orig:
+        df_orig.photon_mono_energy = np.round(df_orig.photon_mono_energy.values, decimals=4)
+    if 'delay' in df_orig:
+        df_orig.delay = np.round(df_orig.delay.values, decimals=1)
 
     # create total I0 and absorption coefficients
-    df_orig["I0"] = df_orig.I0_up + df_orig.I0_down
-    df_orig["is_laser"] = (df_orig['laser_status'] == 1)
+    if 'I0_up' in df_orig:
+        df_orig['I0'] = df_orig.I0_up + df_orig.I0_down
+    if 'laser_status' in df_orig:
+        df_orig['is_laser'] = (df_orig.laser_status == 1)
 
     # set tag number as index
     df_orig = df_orig.set_index("tags")
@@ -85,15 +87,22 @@ def get_data_daq(filenames, daq_labels, sacla_converter, t0=0, selection=""):
 
     # print selection efficiency
     print "\nSelection efficiency"
-    sel_eff = pd.DataFrame( {"Total":df_orig.groupby("run").count().ND, 
-                             "Selected": df.groupby("run").count().ND, 
-                             "Eff.": df.groupby("run").count().ND / df_orig.groupby("run").count().ND})
+    if 'ND' in df_orig:
+        sel_eff = pd.DataFrame({"Total": df_orig.groupby("run").count().ND,
+                                "Selected": df.groupby("run").count().ND,
+                                "Eff.": df.groupby("run").count().ND / df_orig.groupby("run").count().ND})
+    else:
+        sel_eff = pd.DataFrame({"Total": df_orig.groupby("run").count().laser_status,
+                                "Selected": df.groupby("run").count().laser_status,
+                                "Eff.": df.groupby("run").count().laser_status / df_orig.groupby(
+                                    "run").count().laser_status})
     print sel_eff
 
     # checking delay settings
-    g = df.groupby(['run', 'delay', 'photon_mono_energy'])
-    print "\nEvents per run and delay settings"
-    print g.count().I0
+    if 'delay' in df and 'photon_mono_energy' in df and 'I0' in df:
+        g = df.groupby(['run', 'delay', 'photon_mono_energy'])
+        print "\nEvents per run and delay settings"
+        print g.count().I0
     
     return df, filenames
     
