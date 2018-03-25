@@ -26,7 +26,7 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
         for d in detector_names:
             rois.append([])
     if len(rois) != len(detector_names):
-        print "ERROR: please put one ROI per detector!"
+        print("ERROR: please put one ROI per detector!")
         sys.exit(-1)
 
     f = h5py.File(hdf5FileName, 'r')
@@ -38,7 +38,7 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
     run_dst = f["/run_%06d" % run]
 
     detectors_list = []
-    detector_dstnames = [i for i in run_dst.keys() if i.find("detector_2d") != -1]
+    detector_dstnames = [i for i in list(run_dst.keys()) if i.find("detector_2d") != -1]
     for d in detector_dstnames:
         if run_dst[d + "/detector_info/detector_name"].value in detector_names:
             detectors_list.append(d)
@@ -51,7 +51,7 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
     try:
         f_out.create_group("/run_%06d" % run)
     except:
-        print sys.exc_info()[1]
+        print(sys.exc_info()[1])
 
     for info_dst in RUN_INFO_DST:
         info = run_dst[info_dst]
@@ -59,26 +59,26 @@ def get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, run, rois, detector_names, pede
 
     for i, dreal in enumerate(detectors_list):
         detector_dsetname = "/run_%06d/%s" % (run, dreal)
-        print detector_dsetname
+        print(detector_dsetname)
         try:
             fout_grp = f_out.create_group(detector_dsetname)
         except:
-            print sys.exc_info()[1]
+            print(sys.exc_info()[1])
         info = f[detector_dsetname]["detector_info"]
         f.copy(info, f_out[detector_dsetname])
 
         if dark_file != "":
-            print "With dark correction"
+            print("With dark correction")
             sacla_hdf5.get_roi_data(f[detector_dsetname], f_out[detector_dsetname], tag_list, rois[i], pede_thr=pede_thr, dark_matrix=f_dark[dark_dset_names[i]][:])
             f_out[detector_dsetname].attrs['dark_filename'] = np.string_(dark_file.split("/")[-1])
-            print np.string_(dark_file.split("/")[-1])
+            print(np.string_(dark_file.split("/")[-1]))
 
         else:
             sacla_hdf5.get_roi_data(f[detector_dsetname], f_out[detector_dsetname], tag_list, rois[i], pede_thr=pede_thr)
         #asciiList = [n.encode("ascii", "ignore") for n in strList]
         #f_out[detector_dsetname + "/dark_fname"] = np.string_("aaaaaaaa")
     f_out.close()
-    print "Run %s done!" % str(run)
+    print("Run %s done!" % str(run))
 
 
 def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_names, pede_thr=-1, dark_file=""):
@@ -91,7 +91,7 @@ def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_name
 
         if not os.path.isfile(hdf5FileName):
             if not keep_polling:
-                print "No new files to convert"
+                print("No new files to convert")
                 break
 
             while not os.path.isfile(hdf5FileName):
@@ -104,7 +104,7 @@ def get_roi_latest(keep_polling, input_dir, output_dir, run, rois, detector_name
             get_roi_hdf5(hdf5FileName, hdf5FileName_ROI, current_run, rois, detector_names, pede_thr=pede_thr, dark_file=dark_file)
             os.remove(tmp_file)
         else:
-            print "ROI for run  %06d already exists. Skipping ..." % current_run
+            print("ROI for run  %06d already exists. Skipping ..." % current_run)
 
         current_run += 1
     return

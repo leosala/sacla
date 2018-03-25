@@ -20,7 +20,7 @@ def rebin(a, *args):
 
 def get_data_daq(filenames, daq_labels, sacla_converter, t0=0, selection=""):
     # create a DataFrame
-    df_orig = pd.DataFrame(columns=daq_labels.keys(), )
+    df_orig = pd.DataFrame(columns=list(daq_labels.keys()), )
     failed_filenames = []
 
     if isinstance(filenames, str):
@@ -32,15 +32,15 @@ def get_data_daq(filenames, daq_labels, sacla_converter, t0=0, selection=""):
         
         try:
             f = h5py.File(fname, "r")
-            run = int(f.keys()[1].split("_")[1])  # this assumes 1 run per file, as run_XXXXX
-            main_dset = f[f.keys()[1]]  
+            run = int(list(f.keys())[1].split("_")[1])  # this assumes 1 run per file, as run_XXXXX
+            main_dset = f[list(f.keys())[1]]  
         except:
-            print "Error loading file %s: %s" % (fname, sys.exc_info()[1])
+            print("Error loading file %s: %s" % (fname, sys.exc_info()[1]))
             failed_filenames.append(fname)
             continue
 
         # Loading data from the specified datasets
-        for k, v in daq_labels.iteritems():
+        for k, v in daq_labels.items():
             if k == "delay":
                 # delays are in motor steps
                 mydict[k] = sacla_converter.convert("delay", main_dset[v][:], t0=t0)
@@ -86,7 +86,7 @@ def get_data_daq(filenames, daq_labels, sacla_converter, t0=0, selection=""):
         df = df_orig
 
     # print selection efficiency
-    print "\nSelection efficiency"
+    print("\nSelection efficiency")
     if 'ND' in df_orig:
         sel_eff = pd.DataFrame({"Total": df_orig.groupby("run").count().ND,
                                 "Selected": df.groupby("run").count().ND,
@@ -96,13 +96,13 @@ def get_data_daq(filenames, daq_labels, sacla_converter, t0=0, selection=""):
                                 "Selected": df.groupby("run").count().laser_status,
                                 "Eff.": df.groupby("run").count().laser_status / df_orig.groupby(
                                     "run").count().laser_status})
-    print sel_eff
+    print(sel_eff)
 
     # checking delay settings
     if 'delay' in df and 'photon_mono_energy' in df and 'I0' in df:
         g = df.groupby(['run', 'delay', 'photon_mono_energy'])
-        print "\nEvents per run and delay settings"
-        print g.count().I0
+        print("\nEvents per run and delay settings")
+        print(g.count().I0)
     
     return df, filenames
     

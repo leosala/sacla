@@ -28,10 +28,10 @@ traces = ["C1", "C2", "C3", "C4", "F1", "F2"]
 
 
 for trace in traces:
-    print trace, len(t_flist)
+    print(trace, len(t_flist))
 
     count = 0
-    t_flist = filter(lambda x: x.find(trace) != -1, flist)  
+    t_flist = [x for x in flist if x.find(trace) != -1]  
 
     groups[trace] = fout.create_group(trace)    
     
@@ -66,14 +66,14 @@ for trace in traces:
                 bi = 0
                 dset_d.resize(dset_d.shape[0] + buffer_size, axis=0)
             except:
-                print li, bi, spectra_buffer.shape
+                print(li, bi, spectra_buffer.shape)
         count += 1
         
-    print count
+    print(count)
     dset_t[:] = t
     if dset_t.shape[0] > count:
         dset_d.resize(count, axis=0)
-        print dset_d.shape
+        print(dset_d.shape)
     
        
 fout.close()

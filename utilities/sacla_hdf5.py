@@ -11,12 +11,12 @@ import sys
 def get_last_run():
     """Gets the last run from sacla webpage"""
 
-    import urllib2
+    import urllib.request, urllib.error, urllib.parse
     # the very important page
     url = "http://xqaccdaq01.daq.xfel.cntl.local/cgi-bin/storage/run.cgi?bl=3"
 
     # get the html document
-    doc = urllib2.urlopen(url).readlines()
+    doc = urllib.request.urlopen(url).readlines()
 
     # a bit dirty, but works...
     for i, l in enumerate(doc):
@@ -31,7 +31,7 @@ def get_run_metadata(f):
     :param f:   Handle to hdf5 file
     :return:    list of runs [{'number':rnumber, 'tags': tags.value, 'startTime':startTime , 'endTime': endTime}, ...]
     """
-    keys = f.keys()
+    keys = list(f.keys())
     runs = []
 
     # The following routine assumes following hdf5 structure
@@ -45,7 +45,7 @@ def get_run_metadata(f):
         if rmatch:
             # extract run number
             rnumber = rmatch.group(1)
-            print 'Matching entry: ' + rnumber
+            print('Matching entry: ' + rnumber)
 
             # find out all tags for run
             tags = f.get(k).get('event_info').get('tag_number_list')
@@ -65,7 +65,7 @@ def get_run_metadata(f):
 
             runs.append(structure)
         else:
-            print('Skipping entry: ' + k)
+            print(('Skipping entry: ' + k))
 
     return runs
 
@@ -99,7 +99,7 @@ def syncdaq_get(start_time, end_time, key, tags=None, cond=None):
         command.append("-l")
         command.append("100")
 
-    print command
+    print(command)
     proc = subprocess.Popen(command, stdout=subprocess.PIPE)
 
     content = proc.stdout.readlines()
@@ -122,8 +122,8 @@ def syncdaq_get(start_time, end_time, key, tags=None, cond=None):
                     data_tags.append(int(tag.strip()))
 
                 except:
-                    print command
-                    print l
+                    print(command)
+                    print(l)
                     #raise RuntimeError(l)
 
                 # print("%s %s" % (tag.strip(), value.strip()))
@@ -165,8 +165,8 @@ def get_metadata(runs, variables):
                 end_time = end_time + datetime.timedelta(seconds=2)
                 meta[variable] = syncdaq_get(start_time, end_time, variables[variable], tags=run['tags'])
             except:
-                print sys.exc_info()
-                print 'Skipping: ', variable
+                print(sys.exc_info())
+                print('Skipping: ', variable)
         metadata[run['number']] = meta
 
     return metadata
@@ -184,7 +184,7 @@ def get_daq_data(variables, run=None, start_time=None, stop_time=None, start_tag
     meta = {}
     for variable in variables:
         # Call syncdaq_get command (ideally we can retrieve data for all variables at once ...)
-        print start_time, stop_time
+        print(start_time, stop_time)
         #try:
             # print syncdaq_get('2014-06-12 01:17:18.910107+09:00', '2014-06-12 01:17:42.871307+09:00', '219817020', '219818218', variables[variable])
 
@@ -219,7 +219,7 @@ def write_metadata(filename, metadata):
     for run_number in metadata:
         run = metadata[run_number]
 
-        for variable, values in run.iteritems():
+        for variable, values in run.items():
             data_type = np.float
             dat = []
             # if cannot convert to float, cast to NaN
@@ -231,7 +231,7 @@ def write_metadata(filename, metadata):
             # if variables[variable]["units"] == "bool" or variables[variable]["units"] == "pulse":
             #     data_type = np.int
 
-            print "run_" + str(run_number) + "/daq_info/" + variable
+            print("run_" + str(run_number) + "/daq_info/" + variable)
             dataset = out_file.create_dataset("run_" + str(run_number) + "/daq_info/" + variable, data=dat, chunks=True, dtype=data_type)
             # dataset.attrs["units"] = np.string_(variables[variable]["units"])
 
@@ -251,7 +251,7 @@ def get_roi_data(h5_dst, h5_dst_new, tags_list, roi, dark_matrix=None, pede_thr=
     """
 
     first_tag = 0
-    for t in h5_dst.keys():
+    for t in list(h5_dst.keys()):
         if t[0:4] == "tag_":
             first_tag = int(t[4:])
             break

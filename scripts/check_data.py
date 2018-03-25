@@ -13,7 +13,7 @@ def check_hdf5(file_path, data_files, postfix=""):
     for file_n in data_files:
         try:
             check_file = h5py.File(file_path+'/'+file_n, 'r')
-            if check_file.keys() == {}:
+            if list(check_file.keys()) == {}:
                 f_name = re.sub('%s.h5$' % postfix, '', file_n)
                 corrupted_files.append(f_name)
             check_file.close()
@@ -73,11 +73,11 @@ if __name__ == "__main__":
     data_files = get_files(directory, postfix)
     missing_files = check_for_missing_files(data_files, postfix)
 
-    print 'Following files are missing ...'
-    print len(missing_files)
-    print missing_files
+    print('Following files are missing ...')
+    print(len(missing_files))
+    print(missing_files)
 
     corrupted_files = check_hdf5(directory, data_files, postfix)
-    print 'Following files are corrupted ...'
-    print len(corrupted_files)
-    print corrupted_files
+    print('Following files are corrupted ...')
+    print(len(corrupted_files))
+    print(corrupted_files)

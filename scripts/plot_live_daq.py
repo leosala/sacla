@@ -63,12 +63,12 @@ class UpdateDAQ(object):
         self.stop_time = time()
 
         for p_i, plot in enumerate(self.plots):
-            if "cond" in plot.keys():
+            if "cond" in list(plot.keys()):
                 data_on_tmp = sacla_hdf5.get_daq_data(self.daq_quantities, start_time=self.start_time, stop_time=self.stop_time, cond=plot['cond'])
             else:
                 data_on_tmp = sacla_hdf5.get_daq_data(self.daq_quantities, start_time=self.start_time, stop_time=self.stop_time, )
             if self.data_list[p_i] is not None:
-                for k in daq_quantities.keys():
+                for k in list(daq_quantities.keys()):
                     self.data_list[p_i][k][1].extend(data_on_tmp[k][1])
             else:
                 self.data_list[p_i] = data_on_tmp.copy()
@@ -116,7 +116,7 @@ class UpdateDAQ(object):
             json_file = open(self.json_name, 'w')
             json_dict = {}
             json_dict["run"] = ""
-            json_dict["name"] = "-".join(daq_quantities.keys())
+            json_dict["name"] = "-".join(list(daq_quantities.keys()))
             json_dict["plot_type"] = "scatter"
             json_dict["label_x"] = self.plots[0]['x']
             json_dict["label_y"] = self.plots[0]['y']
@@ -182,7 +182,7 @@ class UpdateDAQ(object):
                 ymax = dfs[i].max()[self.plots[i]['y']]
             self.ax2.set_ylim(0.99 * float(ymin), 1.01 * float(ymax))
 
-            print dfs[i].index.values, dfs[i].values.flatten()
+            print(dfs[i].index.values, dfs[i].values.flatten())
             self.line2[i].set_data(dfs[i].index.values, dfs[i].values.flatten())
             #self.line2[i].set_data(xs[i], ys[i])
 

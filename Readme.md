@@ -35,14 +35,17 @@ In [1]:
 
 ## Getting this code
 
-This code needs a *tools* library, located here: (https://github.com/leosala/photon_tools.git).
+This code needs the *photon_tools* library, located here: (https://github.com/leosala/photon_tools.git).
 
 You can either clone this git repository, e.g.:
 
 ```
-mkdir mydir
-cd mydir
-git clone https://github.com/leosala/photon_tools.git tools
+mkdir <mydir>
+cd <mydir>
+git clone https://github.com/leosala/photon_tools.git
+cd photon_tools
+python setup.py develop
+cd ..
 git clone https://github.com/leosala/sacla.git
 ```
 

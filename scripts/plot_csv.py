@@ -21,7 +21,7 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(20, 15))
 
     fnames = args.filename
-    print fnames
+    print(fnames)
     #fnames.append(args.filename)
     #fnames.append("/xdaq/work/share/milne/drive/Escan_0010.txt ")
 

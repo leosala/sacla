@@ -23,4 +23,4 @@ roi = [[0, 1024], [325, 335]]  # X, Y
 
 ut.sacla_hdf5.get_roi_data(f["/run_" + run + "/detector_2d_1/"], f_out["/run_" + run + "/detector_2d_1/"], tag_list, roi)
 f_out.close()
-print "time:", time() - init
+print("time:", time() - init)

@@ -136,7 +136,7 @@ class LecroyBinaryWaveform(object):
     Returns a dictionary of metadata information.
     """
     metadict = dict()
-    for name, value in vars(self).items():
+    for name, value in list(vars(self).items()):
       if not name.startswith('_') and name.isupper():
         metadict[name] = getattr(self, name)
 
@@ -159,7 +159,7 @@ class LecroyBinaryWaveform(object):
 
     metadata = self.metadata
     jmeta = dict()
-    for name, value in metadata.items():
+    for name, value in list(metadata.items()):
       jmeta[name] = str(value)
 
     jmeta['EXPORTER'] = 'LECROY.PY'
@@ -276,7 +276,7 @@ if __name__ == '__main__':
   fname = sys.argv[1]
   bwf = LecroyBinaryWaveform(fname)
 
-  print 'sampling freq=',bwf.sampling_frequency/1e6, 'MHz'
+  print('sampling freq=',bwf.sampling_frequency/1e6, 'MHz')
 
   bwf.savecsv(sys.argv[2])
 

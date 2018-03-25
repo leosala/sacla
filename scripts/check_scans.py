@@ -21,7 +21,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     if args.begin is None or args.end is None:
-        print "[ERROR] -b and -e are compulsory arguments!"
+        print("[ERROR] -b and -e are compulsory arguments!")
         sys.exit(-1)
     
     # parser.add_argument("-d", "--daemon", help="download up to latest run number and keep polling (only applies if -l is specified)", action="store_true")
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     fig = plt.figure(figsize=(20, 15))
 
     fnames = args.filename
-    print fnames
+    print(fnames)
     #fnames.append(args.filename)
     #fnames.append("/xdaq/work/share/milne/drive/Escan_0002.txt")
 

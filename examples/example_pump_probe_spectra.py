@@ -10,17 +10,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 ### loading some utils
-TOOLS_DIR = "../../tools"
+TOOLS_DIR = "../../photon_tools"
 # Loading ImagesProcessor
 try:
-    from tools.images_processor import ImagesProcessor
+    from photon_tools.images_processor import ImagesProcessor
     #from tools.plot_utilities import plot_utilities as pu
 except:
     try:
-        sys.path.append(TOOLS_DIR + "/../")
-        from tools.images_processor import ImagesProcessor
+        sys.path.append(TOOLS_DIR)
+        from photon_tools.images_processor import ImagesProcessor
     except:
-        print "[ERROR] cannot load ImagesProcessor library"
+        print("[ERROR] cannot load ImagesProcessor library")
+        exit()
+        
 # SACLA-specific tools     
 SACLA_LIB = "../"
 sys.path.append(SACLA_LIB)

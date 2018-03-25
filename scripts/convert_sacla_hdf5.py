@@ -14,7 +14,7 @@ import pandas as pd
 import beamtime_converter_201406XX as btc
 
 if len(argv) != 3:
-    print "USAGE: ", argv[0], "infile.h5 outfile.h5"
+    print("USAGE: ", argv[0], "infile.h5 outfile.h5")
     exit(-1)
 
 start_t = time()
@@ -45,7 +45,7 @@ def convert_sacla_file(f, fout, compress=""):
         if k[0:3] == "run":
             run_list.append(k)
 
-    print "Run list:", run_list
+    print("Run list:", run_list)
 
     for run in run_list:
         run_dst = f[run]
@@ -53,9 +53,9 @@ def convert_sacla_file(f, fout, compress=""):
 
         # list of all the tags in the file.
         # Warning! Not all the tags have data...
-        print run_dst["event_info"].keys()
+        print(run_dst["event_info"].keys())
         tag_list = run_dst["event_info/tag_number_list"]
-        print "#tags:", tag_list.shape
+        print("#tags:", tag_list.shape)
 
         # Copying Run information datasets
         for info_dst in RUN_INFO_DST:
@@ -67,13 +67,13 @@ def convert_sacla_file(f, fout, compress=""):
         for t in run_dst.keys():
             if t.find("detector") == -1:
                 continue
-            print t + DET_INFO_DSET, run_dst[t + DET_INFO_DSET].value
+            print(t + DET_INFO_DSET, run_dst[t + DET_INFO_DSET].value)
             if run_dst[t + DET_INFO_DSET].value in SELECT_DETECTORS:
-                print "selecting", run_dst[t + DET_INFO_DSET].value, "(known as " + t + ")"
+                print("selecting", run_dst[t + DET_INFO_DSET].value, "(known as " + t + ")")
                 detectors_list.append(t)
 
         for det in detectors_list:
-            print det
+            print(det)
 
             # do not forget about detector info...
             grp = run_dst[det]
@@ -81,7 +81,7 @@ def convert_sacla_file(f, fout, compress=""):
             tags_images = run_dst[det].keys()
             tags_images.remove('detector_info')
             tags_n = tag_list.shape[0]
-            print "Total tags:", tags_n
+            print("Total tags:", tags_n)
 
             tags = np.zeros([tags_n], dtype="i8")
             temp = np.zeros([tags_n], dtype="float")
@@ -92,15 +92,15 @@ def convert_sacla_file(f, fout, compress=""):
             status[:] = np.NAN
 
             info = grp["detector_info"]
-            print info, "/" + run + "/" + real_det_name
+            print(info, "/" + run + "/" + real_det_name)
             fout.create_group(run + "/" + real_det_name)
             f.copy(info, fout["/" + run + "/" + real_det_name])
 
             data_dset = None
 
             chk_size = 300
-            print det + "/" + tags_images[0] + "/detector_data"
-            print run_dst[det + "/" + tags_images[0]].keys()
+            print(det + "/" + tags_images[0] + "/detector_data")
+            print(run_dst[det + "/" + tags_images[0]].keys())
             data_shape = run_dst[det + "/" + tags_images[0] + "/detector_data"].shape
             data_type = run_dst[det + "/" + tags_images[0] + "/detector_data"].dtype
 
@@ -136,7 +136,7 @@ def convert_sacla_file(f, fout, compress=""):
     #f.close()
     #fout.close()
 
-    print "Total time: ", time() - start_t, "s"
+    print("Total time: ", time() - start_t, "s")
 
 
 if __name__ == "__main__":
@@ -167,14 +167,14 @@ if __name__ == "__main__":
             run_list.append(k)
 
     for dname, v in daq_info.iteritems():
-        print dname
+        print(dname)
         df = pd.read_csv(add_files_dir + v["fname"], header=0, names=["tag", "value"], index_col="tag", )
 
         for r in run_list:
             tags = f[str(r) + "/event_info/tag_number_list"]
             red_df = df.loc[tags[0]:tags[-1]]
             conv_df = btc.convert(dname, red_df[:])
-            print conv_df[0], conv_df.dtype
+            print(conv_df[0], conv_df.dtype)
             dt = np.float
             if v["units"] == "bool" or v["units"] == "pulse":
                 dt = np.int

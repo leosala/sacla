@@ -23,18 +23,18 @@ SACLA_LIB = "../"
 #SACLA_LIB = "/swissfel/photonics/software/python-code/sacla/"
 sys.path.append(SACLA_LIB)
 import utilities as ut
-TOOLS_DIR = "../../tools"
+TOOLS_DIR = "../../photon_tools"
 # Loading ImagesProcessor
 try:
-    from tools.images_processor import ImagesProcessor
+    from photon_tools.images_processor import ImagesProcessor
     #from tools.plot_utilities import plot_utilities as pu
 except:
     try:
-        sys.path.append(TOOLS_DIR + "/../")
-        from tools.images_processor import ImagesProcessor
+        sys.path.append(TOOLS_DIR)
+        from photon_tools.images_processor import ImagesProcessor
     except:
-        print "[ERROR] cannot load ImagesProcessor library"
-        
+        print("[ERROR] cannot load ImagesProcessor library")
+        exit()
 
 # specific converters for the 2014-11 data taking. These should be customized per each beamtime!
 from utilities import beamtime_converter_201411XX as sacla_converter
@@ -69,7 +69,7 @@ t0 = 220.86
 
 def get_data_df(dataset_name, runs, selection=""):
     # create a DataFrame
-    df_orig = pd.DataFrame(columns=daq_labels.keys(), )
+    df_orig = pd.DataFrame(columns=list(daq_labels.keys()), )
 
     failed_runs = []
     runs = sorted(runs)
@@ -80,12 +80,12 @@ def get_data_df(dataset_name, runs, selection=""):
             f = h5py.File(fname, "r")
             main_dset = f["run_" + str(run)]
         except:
-            print "Error loading run %s: %s" % (run, sys.exc_info()[1])
+            print("Error loading run %s: %s" % (run, sys.exc_info()[1]))
             failed_runs.append(run)
             pass
 
         # Loading data from the specified datasets
-        for k, v in daq_labels.iteritems():
+        for k, v in daq_labels.items():
             if k == "delay":
                 # delays are in motor steps
                 mydict[k] = sacla_converter.convert("delay", main_dset[v][:], t0=t0)
@@ -125,16 +125,16 @@ def get_data_df(dataset_name, runs, selection=""):
         df = df_orig
 
     # print selection efficiency
-    print "\nSelection efficiency"
+    print("\nSelection efficiency")
     sel_eff = pd.DataFrame( {"Total":df_orig.groupby("run").count().ND, 
                              "Selected": df.groupby("run").count().ND, 
                              "Eff.": df.groupby("run").count().ND / df_orig.groupby("run").count().ND})
-    print sel_eff
+    print(sel_eff)
 
     # checking delay settings
     g = df.groupby(['run', 'delay', 'photon_mono_energy'])
-    print "\nEvents per run and delay settings"
-    print g.count().TFY
+    print("\nEvents per run and delay settings")
+    print(g.count().TFY)
     
     return df, runs
 
@@ -144,18 +144,18 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
     # We load all data from files, place it in a `DataFrame`, and then add some useful derived quantities. At last, we use `tags` as index for the `DataFrame`
 
     runs = sorted(df.run.unique())
-    print runs
+    print(runs)
 
     # label for ascii output dump
     out_label = "rixs_" + runs[0] + "-" + runs[-1]
 
     delay = df.delay.unique()
     if len(delay) > 1:
-        print "More than one delay settings in the selected run range, exiting"
+        print("More than one delay settings in the selected run range, exiting")
         sys.exit(-1)
 
-    print "\nAvailable energy settings"
-    print df.photon_mono_energy.unique(), "\n"
+    print("\nAvailable energy settings")
+    print(df.photon_mono_energy.unique(), "\n")
 
     # Now we can run the analysis. For each energy value and each run, a *list of tags* is created, 
     # such that events have the same mono energy and they are part of the same run (as each run is in a separated file). 
@@ -215,15 +215,15 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
 
         # waiting for all results
         results = [r.get() for r in async_results]
-        print "Got results for energy", energy
+        print("Got results for energy", energy)
 
         # producing the laser on/off maps
         for j, run in enumerate(runs):
 
-            if not total_results.has_key(run):
+            if run not in total_results:
                 total_results[run] = {}
 
-            if not results[j].has_key("spectra"):
+            if "spectra" not in results[j]:
                 continue
 
             df_run = df[df.run == run]
@@ -248,7 +248,7 @@ def compute_rixs_spectra(dataset_name, df, thr_low=0, thr_hi=999999, ):
             total_results[run][energy]["laser_on"] = laser_masks[0]
 
     for laser in [0, 1]:
-        for energy in events_per_energy[0].keys():
+        for energy in list(events_per_energy[0].keys()):
             rixs_map[laser][energies_list.index(energy)] /= events_per_energy[laser][energy]
     
         rixs_map_std[laser] = rixs_map[laser] / np.sqrt(rixs_map_std[laser])
@@ -266,7 +266,7 @@ def get_rixs_spectra(dataset_name, runs, thr_low=0, thr_hi=999999, selection="")
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print "USAGE: %s initial_run_number final_run_number" % sys.argv[0]
+        print("USAGE: %s initial_run_number final_run_number" % sys.argv[0])
     else:
         run_i = int(sys.argv[1])
         run_f = int(sys.argv[2])

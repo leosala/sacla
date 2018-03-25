@@ -66,14 +66,14 @@ def compute_xas(scan_type, start_run, end_run, data_dir, t0=0):
             f = h5py.File(fname, "r")
             tags = f["/run_" + run + "/event_info/tag_number_list"][:]
         except IOError:
-            print exc_info()
+            print(exc_info())
             continue
         except:
-            print exc_info()
+            print(exc_info())
             #print "Last good run was %d" % int(i - 1)
             #end_run = str(i - 1)
             #continue
-            print "[ERROR] dunno what to do, call support!"
+            print("[ERROR] dunno what to do, call support!")
         #break 
 
         # create dataframes from hdf5 files
@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
     # plot
     fig = plt.figure(figsize=(10, 7))
-    if const_quant.has_key(index_name):
+    if index_name in const_quant:
         fig.suptitle("Runs %s - %s, %s = %.3f %s" % (args.start_run, end_run, const_quant[index_name], df[const_quant[index_name]].iloc[0], units[const_quant[index_name]]), fontsize=20)
     else:
         fig.suptitle("Runs %s - %s" % (args.start_run, end_run), fontsize=20)
@@ -228,12 +228,12 @@ if __name__ == "__main__":
 
     plt.savefig(os.path.join(args.outputdir, args.label + ".png"))
 
-    print ""
+    print("")
     if args.asciifile:
-        print "ASCII dumps and scan plot saved in: %s" % args.outputdir
-        print "See them with e.g.: ls -lah %s*" % os.path.join(args.outputdir, args.label)
+        print("ASCII dumps and scan plot saved in: %s" % args.outputdir)
+        print("See them with e.g.: ls -lah %s*" % os.path.join(args.outputdir, args.label))
     else:
-        print "Scan plot saved in: %s" % args.outputdir
-        print "See it with e.g.: ls -lah %s*" % os.path.join(args.outputdir, args.label)
+        print("Scan plot saved in: %s" % args.outputdir)
+        print("See it with e.g.: ls -lah %s*" % os.path.join(args.outputdir, args.label))
     if not args.noplot:
         plt.show()

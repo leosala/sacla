@@ -15,7 +15,7 @@ sys.path.append(dir_path + 'photon_tools')
 
 import matplotlib.pyplot as plt
 import numpy as np
-import cPickle as pickle
+import pickle as pickle
 from utilities import postproc_functions as fsacla
 from photon_tools.images_processor import ImagesProcessor
 import utilities as sacla_utils
@@ -103,7 +103,7 @@ ip.add_analysis("roi_bkgRoi", args={'roi': roi, 'bkg_roi': bkgRoi})
 for run in runs:
     rname = str(run)
     fname = DIR + rname + ".h5"
-    print('\nAnalyzing run ' + rname + '\n')
+    print(('\nAnalyzing run ' + rname + '\n'))
     """
     Analyze images and integrate roi and bkgRoi. Can take a lot of time
     The results are saved in a pickle file in the folder analyzed_runs/imgAna.
@@ -161,7 +161,7 @@ for run in runs:
         df = df[df.I0 < 0.9]
         df = df[df.I0 > 0.005]
         ratio = float(len(df)) / len(df_orig)
-        print("\n I0 filter: " + str(ratio))
+        print(("\n I0 filter: " + str(ratio)))
 
         tt_stage_offset = 30000  # just to make number more readable
         if useTT == 1:

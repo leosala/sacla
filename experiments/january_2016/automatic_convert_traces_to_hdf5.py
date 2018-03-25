@@ -32,13 +32,13 @@ while True:
                 convert_traces_to_hdf5(indir, outdir, traces, )
 
         elif runs != []:
-            print time() - last_update > time_before_last_run_is_processed
+            print(time() - last_update > time_before_last_run_is_processed)
             if time() - last_update > time_before_last_run_is_processed:
-                print "no new directories since %.1f s, processing last directory" % time_before_last_run_is_processed
+                print("no new directories since %.1f s, processing last directory" % time_before_last_run_is_processed)
                 convert_traces_to_hdf5(indir, outdir, traces, )
                 last_run_list.append(runs[-1])
         else:
-            print "No new directories..."
+            print("No new directories...")
     except KeyboardInterrupt:
         break
             

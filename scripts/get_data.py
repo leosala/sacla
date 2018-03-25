@@ -30,10 +30,10 @@ VERBOSE = False
 def get_last_run():
     """Gets the last run from sacla webpage"""
 
-    import urllib2
+    import urllib.request, urllib.error, urllib.parse
 
     # get the html document
-    doc = urllib2.urlopen(run_url).readlines()
+    doc = urllib.request.urlopen(run_url).readlines()
 
     # a bit dirty, but works...
     for i, l in enumerate(doc):
@@ -59,7 +59,7 @@ def download_run_function(current_run, nompccd, result_queue):
         download_run(current_run, nompccd)
         result_queue.put(0)
     except:
-        print sys.exc_info()[0]
+        print(sys.exc_info()[0])
         result_queue.put(current_run)
 
 def download_run(current_run, nompccd):
@@ -71,10 +71,10 @@ def download_run(current_run, nompccd):
 
     # Check whether run was already downloaded
     if os.path.isfile(data_file):
-        print('Datafile for run %s already exists' % current_run)
+        print(('Datafile for run %s already exists' % current_run))
     else:
         # Start the download of the run (to temporary folder)
-        print('Download datafile for run: %s' % current_run)
+        print(('Download datafile for run: %s' % current_run))
 
         # # [begin] DataConvert4
 #        os.system("touch %s" % tmp_data_file)
@@ -89,20 +89,20 @@ def download_run(current_run, nompccd):
         if os.path.isfile(maketaglist_condition_file):
             command = 'MakeTagList -b %d -r %06d -inp %s -out %s' % (beamline, current_run, maketaglist_condition_file, taglist_file)
         else:
-            print "[WARNING] MakeTagList cfg file %s could not be found, proceeding with no conditions" % maketaglist_condition_file
+            print("[WARNING] MakeTagList cfg file %s could not be found, proceeding with no conditions" % maketaglist_condition_file)
             command = 'MakeTagList -b %d -r %06d -out %s' % (beamline, current_run,  taglist_file)
-        print command
+        print(command)
         try:
             os.system(command)
         except:
-            print "Cannot run MakeTagList because:"
-            print sys.exc_info()[0]
+            print("Cannot run MakeTagList because:")
+            print(sys.exc_info()[0])
             raise RuntimeError
 
         #### Workaround remove empty detector line if exists
         had_mpccd = fix_taglist(taglist_file, nompccd)
         if nompccd and not had_mpccd:
-            print 'skipping run as it had no MPCCD detector configured'
+            print('skipping run as it had no MPCCD detector configured')
             # cleanup taglist file
             os.remove(taglist_file)
             return
@@ -116,11 +116,11 @@ def download_run(current_run, nompccd):
 
         if not VERBOSE:
             command += " &> dataconvert_%06d.log" % current_run
-        print command
+        print(command)
         try:
             os.system(command)
         except:
-            print sys.exc_info()
+            print(sys.exc_info())
 
         ## [end] DataConvert4
 
@@ -134,7 +134,7 @@ def download_run(current_run, nompccd):
 
 def download_run_to_latest(start_run, keepPolling, nompccd, max_jobs=1):
     if not os.path.exists(tmp_data_directory):
-        print 'Create temporary directory %s' % tmp_data_directory
+        print('Create temporary directory %s' % tmp_data_directory)
         os.makedirs(tmp_data_directory)
 
     last_run = get_last_run()
@@ -147,7 +147,7 @@ def download_run_to_latest(start_run, keepPolling, nompccd, max_jobs=1):
                     try:
                         if current_run > last_run:
                             last_run = get_last_run()
-                            print 'No more jobs left, checking for new runs'
+                            print('No more jobs left, checking for new runs')
                             break
                         p = mproc.Process(target=download_run_function, args=(current_run, nompccd, results_queue))
                         p.start()
@@ -156,24 +156,24 @@ def download_run_to_latest(start_run, keepPolling, nompccd, max_jobs=1):
                     except KeyboardInterrupt:
                         raise KeyboardInterrupt
                     except:
-                        print "Failed to get %s because..." % str(current_run)
-                        print sys.exc_info()
+                        print("Failed to get %s because..." % str(current_run))
+                        print(sys.exc_info())
                 while not results_queue.empty():
                     res = results_queue.get()
                     if res != 0:
-                        print "Failed to get %s because..." % str(current_run)
-                        print "Trying again..."
+                        print("Failed to get %s because..." % str(current_run))
+                        print("Trying again...")
                         current_run = res
                         break
                 if len(mproc.active_children()) == 0:
-                    print 'No more jobs left, checking for new runs'
+                    print('No more jobs left, checking for new runs')
                 last_run = get_last_run()
 
         if current_run > get_last_run():
             current_run = get_last_run()
         if (last_run is None or current_run > last_run) and keepPolling:
             while last_run is None or current_run > last_run:
-                print 'no new runs - sleep ...'
+                print('no new runs - sleep ...')
                 time.sleep(5)
                 last_run = get_last_run()
 
@@ -191,9 +191,9 @@ def fix_taglist(txt_file, nompccd):
     with open(txt_file, 'w') as file:
         for line in data:
             if re.match('^det,$', line) and not nompccd:
-                print 'fix it ...'
+                print('fix it ...')
             elif re.match('^det,.*', line) and nompccd:
-                print 'remove detectors ...'
+                print('remove detectors ...')
                 had_mpccd = True
             else:
                 file.write(line)
@@ -215,10 +215,10 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
 
     if not os.path.isfile(dataconvert_config_file):
-        print "[ERROR] Cannot find DataConvert4 cfg file %s, please copy there a suitable cfg file" % dataconvert_config_file
+        print("[ERROR] Cannot find DataConvert4 cfg file %s, please copy there a suitable cfg file" % dataconvert_config_file)
         sys.exit(-1)
     
-    print 'Start run number is ', arguments.run
+    print('Start run number is ', arguments.run)
 
     if arguments.latest:
         download_run_to_latest(int(arguments.run), arguments.daemon, arguments.nompccd, int(arguments.jobs))

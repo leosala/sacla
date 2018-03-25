@@ -27,12 +27,12 @@ def convert_traces_to_hdf5(indir, outdir, outfile=None, tag_trace="C4", test_tra
         
     flist = os.listdir(indir)
     # get traces from filename list
-    traces = list(set(map(lambda x: x[:2], flist)))
+    traces = list(set([x[:2] for x in flist]))
     # tag trace goes first
     traces.remove(tag_trace)
     traces.insert(0, tag_trace)
     
-    print "Found this traces: ", traces    
+    print("Found this traces: ", traces)    
     
     buffer_size = 100  # images
     default_value = 0
@@ -52,8 +52,8 @@ def convert_traces_to_hdf5(indir, outdir, outfile=None, tag_trace="C4", test_tra
 
     # running only on events with all traces
     for trace in traces:
-        t_flists[trace] = filter(lambda x: x.find(trace) != -1, flist)  
-        t_fnumbers[trace] = sorted(set(map(lambda x: x[7:12], t_flists[trace])))   
+        t_flists[trace] = [x for x in flist if x.find(trace) != -1]  
+        t_fnumbers[trace] = sorted(set([x[7:12] for x in t_flists[trace]]))   
         if fnumbers is None:
             fnumbers = t_fnumbers[trace]
         else:
@@ -74,10 +74,10 @@ def convert_traces_to_hdf5(indir, outdir, outfile=None, tag_trace="C4", test_tra
         #for fi, f in enumerate(t_flist):
    
         if fnumbers == [] or fnumbers is None:
-            print "No tags found, cannot continue"
+            print("No tags found, cannot continue")
             break
         if t_flist == []:
-            print "No files found"
+            print("No files found")
             break
         
         for fi, n in enumerate(fnumbers):
@@ -89,8 +89,8 @@ def convert_traces_to_hdf5(indir, outdir, outfile=None, tag_trace="C4", test_tra
 
                 #t, d = lecroy.read_timetrace(indir + trace + "Trace" + str(n).zfill(5) + ".trc")
             except:
-                print "[ERROR] file %s" % fname
-                print sys.exc_info()[1]
+                print("[ERROR] file %s" % fname)
+                print(sys.exc_info()[1])
                 # at least the first n should exist for all traces
                 if t is None:
                     continue
@@ -145,14 +145,14 @@ def convert_traces_to_hdf5(indir, outdir, outfile=None, tag_trace="C4", test_tra
                     li += bi
                     bi = 0
                 except:
-                    print sys.exc_info()
+                    print(sys.exc_info())
                     #print li, bi, spectra_buffer.shape
             count += 1
         
         if t_size is None:
-            print "No files found! Are tag traces missing?"
+            print("No files found! Are tag traces missing?")
             continue            
-        print count
+        print(count)
         dset_t[:] = t
         if bi != 0:
             try:
@@ -169,7 +169,7 @@ def convert_traces_to_hdf5(indir, outdir, outfile=None, tag_trace="C4", test_tra
                 
                 bi = 0
             except:
-                print sys.exc_info()
+                print(sys.exc_info())
                 
         if dset_t.shape[0] >= count:
             dset_d.resize(count, axis=0)
@@ -177,7 +177,7 @@ def convert_traces_to_hdf5(indir, outdir, outfile=None, tag_trace="C4", test_tra
             dset_tag.resize(count, axis=0)
            
     fout.close()
-    print "Output file %s created" % (outdir + outfile)
+    print("Output file %s created" % (outdir + outfile))
     return g_tags, outdir + outfile
 
 

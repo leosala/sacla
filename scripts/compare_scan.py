@@ -2,7 +2,7 @@
 It just calls compute_xas many times, compute some stats, and plot
 """
 
-from plot_scan import compute_xas
+from .plot_scan import compute_xas
 import matplotlib.pyplot as plt
 # import pandas as pd
 import numpy as np
@@ -24,7 +24,7 @@ a2 = plt.subplot(111)
 
 markers = ["o", "v", "^", ">", "<", "1", "2", "3", "4", "*", "s", "p", "h", "H", "+", "x"]
 for i, runs in enumerate(run_list):
-    print runs
+    print(runs)
 
     labels.append("")
     # delay time 0

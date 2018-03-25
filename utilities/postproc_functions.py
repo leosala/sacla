@@ -5,7 +5,7 @@ Created on Thu Nov 26 10:52:18 2015
 @author: VEsp
 """
 
-import cPickle as pickle
+import pickle as pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -78,7 +78,7 @@ def getTTfromCSV(df_orig, CSVname, method, tt_stage_offset=0):
     # check taglist
     if np.array_equal(df_orig.index, dfCSV.index):
         df = df_orig
-        print "TT-data matching: tag list matches"
+        print("TT-data matching: tag list matches")
     else:
         commonTags = set(df_orig.index).intersection(dfCSV.index)
         df = df_orig.loc[commonTags]
@@ -94,7 +94,7 @@ def getTTfromCSV(df_orig, CSVname, method, tt_stage_offset=0):
     elif "derivative" in method:
         df['tt'] = dfCSV.derivative
     else:
-        print "Please give a correct method: ""fit"" or ""derivative"". "
+        print("Please give a correct method: ""fit"" or ""derivative"". ")
 
 #    df_loff = df_orig[df.laser_status == 0]
 #    df_loff['tt'] = 0
@@ -277,7 +277,7 @@ def bin_tt_COM(df, bin_edges, rname, fname, calibration=0.01, roi=[[235, 270], [
             peakCOM[ii, :] = np.NaN
 
         del results
-        print('bin number %s' % n)
+        print(('bin number %s' % n))
 
     df_out['COMx'] = peakCOM[:, 0]
     df_out['COMy'] = peakCOM[:, 1]

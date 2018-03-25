@@ -24,15 +24,15 @@ if __name__ == "__main__":
     is_roi = True  # is a ROI'd file?
     thr = 70  # APU counting threshold
 
-    print fname, fname.find("roi")
+    print(fname, fname.find("roi"))
     if fname.find("roi") == -1:
         is_roi = False
 
     run = fname.split("/")[-1].replace("_roi", "").replace(".h5", "")
 
     f = h5py.File(fname, "r")
-    print f["/run_" + run + "/"].keys()
-    print f.keys()
+    print(list(f["/run_" + run + "/"].keys()))
+    print(list(f.keys()))
 
     tag_list = f["/run_" + run + "/event_info/tag_number_list"][:]
     is_laser = f["/run_" + run + "/event_info/bl_3/lh_1/laser_pulse_selector_status"][:]
@@ -75,7 +75,7 @@ if __name__ == "__main__":
     absorp = spd / itot
 
     tags = tags[is_data]
-    print tags.shape,
+    print(tags.shape, end=' ')
     photon_energy = photon_energy[is_data]
     iou = iou[is_data]
     iol = iol[is_data]
@@ -83,11 +83,11 @@ if __name__ == "__main__":
     #rois = [[[0, 1024], [440, 512]], [[0, 1024], [460, 490]]]  # X, Y
     rois = [[], []]
     for i in range(0, 2):
-        print is_roi
+        print(is_roi)
         [sum_image_on, spectrum_on], [sum_image_off, spectrum_off] = ut.analysis.get_spectrum_sacla(f["/run_" + run + "/detector_2d_" + str(i + 1) + "/"],
                                                                                                     tags, masks=[[is_laser == 1], [is_laser == 0]], thr=thr, roi=rois[i])
         
-        print "sum", sum(spectrum_on)
+        print("sum", sum(spectrum_on))
         if is_roi:
             image_sum = f["/run_" + run + "/detector_2d_" + str(i + 1) + "/image_avg"][:]
 
